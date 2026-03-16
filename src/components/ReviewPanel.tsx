@@ -191,55 +191,73 @@ export function useReview() {
   const [rawStream, setRaw]     = useState("");
   const [error, setError]       = useState<string | null>(null);
 
-  const runReview = useCallback(async (filename: string, code: string) => {
-    setState("streaming");
-    setResult(null);
-    setRaw("");
-    setError(null);
+ const runReview = useCallback(async (filename: string, code: string) => {
+  setState("streaming");
+  setResult(null);
+  setRaw("");
+  setError(null);
 
-    try {
-      const res = await fetch("/api/review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename, code }),
-      });
+  try {
+    const res = await fetch("/api/review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename, code }),
+    });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Review failed");
-      }
-
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let full = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        full += chunk;
-        setRaw(full);
-      }
-
-      // clean and parse JSON
-      const clean = full
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim();
-
-      // find first { to last }
-      const start = clean.indexOf("{");
-      const end   = clean.lastIndexOf("}");
-      if (start === -1 || end === -1) throw new Error("Invalid response from AI");
-
-      const parsed: ReviewResult = JSON.parse(clean.slice(start, end + 1));
-      setResult(parsed);
-      setState("done");
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
-      setState("error");
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Review failed");
     }
-  }, []);
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let full = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+
+      // OpenRouter sends SSE: "data: {...}\n\n"
+      // extract content delta from each line
+      const lines = chunk.split("\n");
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === "data: [DONE]") continue;
+        if (!trimmed.startsWith("data: ")) continue;
+        try {
+          const json = JSON.parse(trimmed.slice(6));
+          const delta = json?.choices?.[0]?.delta?.content;
+          if (delta) {
+            full += delta;
+            setRaw(full);
+          }
+        } catch {
+          // malformed chunk — skip
+        }
+      }
+    }
+
+    // parse final JSON
+    const clean = full
+                    .replace(/<think>[\s\S]*?<\/think>/g, "")
+                    .replace(/```json\n?/g, "")
+                    .replace(/```\n?/g, "")
+                    .trim();
+    const start = clean.indexOf("{");
+    const end   = clean.lastIndexOf("}");
+    if (start === -1 || end === -1) throw new Error("AI returned an invalid response — try again");
+
+    const parsed: ReviewResult = JSON.parse(clean.slice(start, end + 1));
+    setResult(parsed);
+    setState("done");
+
+  } catch (err: any) {
+    setError(err.message || "Something went wrong");
+    setState("error");
+  }
+}, []);
 
   const reset = useCallback(() => {
     setState("idle");
