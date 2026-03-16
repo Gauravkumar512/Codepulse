@@ -1,13 +1,10 @@
-    // app/api/repo/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { Octokit } from "@octokit/rest";
 
 const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN, // optional but increases rate limit from 60 to 5000 req/hr
+  auth: process.env.GITHUB_TOKEN,
 });
 
-/* ── Parse owner/repo from any GitHub URL format ── */
 function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
   try {
     const cleaned = url.trim().replace(/\.git$/, "");
@@ -19,7 +16,6 @@ function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
   }
 }
 
-/* ── Recursive file tree type ── */
 export type FileNode = {
   name: string;
   path: string;
@@ -72,7 +68,6 @@ function buildTree(items: { path?: string; type?: string }[]): FileNode[] {
   return root;
 }
 
-/* ── POST /api/repo ── */
 export async function POST(req: NextRequest) {
   try {
     const { url } = await req.json();

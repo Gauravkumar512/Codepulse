@@ -1,5 +1,3 @@
-// app/api/repo/file/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { Octokit } from "@octokit/rest";
 
@@ -7,7 +5,6 @@ const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,
 });
 
-/* ── GET /api/repo/file?owner=x&repo=y&path=z&branch=main ── */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

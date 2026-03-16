@@ -2,23 +2,23 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, useScroll, useTransform, AnimatePresence,Variants } from "framer-motion";
+import { motion, useScroll, useTransform, AnimatePresence, Variants } from "framer-motion";
 
 const C = {
-  bg:       "#000000",
-  surface:  "#0a0a0a",
-  card:     "#0f0f0f",
-  border:   "#1a1a1a",
-  border2:  "#252525",
-  cyan:     "#8aa2b8",
-  cyanDim:  "rgba(138,162,184,0.07)",
-  cyanMid:  "rgba(138,162,184,0.16)",
-  green:    "#7a9c8e",
-  red:      "#c4707e",
-  amber:    "#b8976a",
-  text:     "#d4d4d4",
-  muted:    "#3a3a3a",
-  muted2:   "#666",
+  bg: "#000000",
+  surface: "#0a0a0a",
+  card: "#0f0f0f",
+  border: "#1a1a1a",
+  border2: "#252525",
+  cyan: "#8aa2b8",
+  cyanDim: "rgba(138,162,184,0.07)",
+  cyanMid: "rgba(138,162,184,0.16)",
+  green: "#7a9c8e",
+  red: "#c4707e",
+  amber: "#b8976a",
+  text: "#d4d4d4",
+  muted: "#3a3a3a",
+  muted2: "#666",
 };
 
 function ParticleBackground() {
@@ -98,9 +98,7 @@ function ParticleBackground() {
   );
 }
 
-/* ─────────────────────────────────────────
-   NOISE OVERLAY
-───────────────────────────────────────── */
+
 function NoiseOverlay() {
   return (
     <div style={{
@@ -111,31 +109,26 @@ function NoiseOverlay() {
   );
 }
 
-/* ─────────────────────────────────────────
-   GLOW ORBS
-───────────────────────────────────────── */
 function GlowOrbs() {
   return (
     <>
       <div style={{
         position: "fixed", top: "-20vh", left: "50%", transform: "translateX(-50%)",
-        width: 600, height: 600, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(138,162,184,0.035) 0%, transparent 65%)",
+        width: 760, height: 760, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 68%)",
         pointerEvents: "none", zIndex: 0,
       }} />
       <div style={{
         position: "fixed", bottom: "10vh", right: "-10vw",
-        width: 400, height: 400, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(122,156,142,0.03) 0%, transparent 70%)",
+        width: 520, height: 520, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 72%)",
         pointerEvents: "none", zIndex: 0,
       }} />
     </>
   );
 }
 
-/* ─────────────────────────────────────────
-   NAVBAR
-───────────────────────────────────────── */
+
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -166,7 +159,7 @@ function Navbar() {
         ))}
       </div>
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <Link href="/signin" style={{ color: C.muted2, fontSize: 13, fontWeight: 500, textDecoration: "none", fontFamily: "var(--font-sans)", letterSpacing: "0.2px" }}>
+        <Link href="/login" style={{ color: C.muted2, fontSize: 13, fontWeight: 500, textDecoration: "none", fontFamily: "var(--font-sans)", letterSpacing: "0.2px" }}>
           Sign in
         </Link>
         <GlowButton href="/signup" small>Get started</GlowButton>
@@ -201,9 +194,6 @@ function LogoMark() {
   );
 }
 
-/* ─────────────────────────────────────────
-   GLOW BUTTON
-───────────────────────────────────────── */
 function GlowButton({ href, children, small, outline }: { href: string; children: React.ReactNode; small?: boolean; outline?: boolean }) {
   const [hov, setHov] = useState(false);
   const base: React.CSSProperties = {
@@ -236,7 +226,7 @@ function GlowButton({ href, children, small, outline }: { href: string; children
         ...base,
         background: hov ? "#9ab4c8" : C.cyan,
         color: "#000",
-        boxShadow: hov ? `0 0 24px rgba(138,162,184,0.3), 0 0 48px rgba(138,162,184,0.1)` : `0 0 12px rgba(138,162,184,0.15)`,
+        boxShadow: hov ? `0 0 10px rgba(138,162,184,0.18), 0 0 24px rgba(138,162,184,0.06)` : `0 0 6px rgba(138,162,184,0.1)`,
         transform: hov ? "translateY(-1px)" : "translateY(0)",
       }}>
       {children}
@@ -245,9 +235,7 @@ function GlowButton({ href, children, small, outline }: { href: string; children
   );
 }
 
-/* ─────────────────────────────────────────
-   HERO
-───────────────────────────────────────── */
+
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 32 },
   show: (i: number = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.7, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] } }),
@@ -292,8 +280,8 @@ function HeroSection() {
 
 function TerminalCard() {
   const lines = [
-    { delay: 0,    content: <><span style={{ color: C.muted2 }}>$</span> <span style={{ color: C.cyan }}>codepulse</span> <span style={{ color: C.text }}>scan</span> <span style={{ color: C.amber }}>github.com/user/my-app</span></> },
-    { delay: 600,  content: <><span style={{ color: C.muted }}>›</span> <span style={{ color: C.muted2 }}>Fetching repo tree... </span><span style={{ color: C.green }}>42 files found</span></> },
+    { delay: 0, content: <><span style={{ color: C.muted2 }}>$</span> <span style={{ color: C.cyan }}>codepulse</span> <span style={{ color: C.text }}>scan</span> <span style={{ color: C.amber }}>github.com/user/my-app</span></> },
+    { delay: 600, content: <><span style={{ color: C.muted }}>›</span> <span style={{ color: C.muted2 }}>Fetching repo tree... </span><span style={{ color: C.green }}>42 files found</span></> },
     { delay: 1100, content: <><span style={{ color: C.muted }}>›</span> <span style={{ color: C.muted2 }}>Running secret scanner...</span></> },
     { delay: 1600, content: <><span style={{ color: C.red }}>  ⚠ CRITICAL</span><span style={{ color: C.muted2 }}> config.js:12 — AWS key exposed</span></> },
     { delay: 1900, content: <><span style={{ color: C.red }}>  ⚠ CRITICAL</span><span style={{ color: C.muted2 }}> .env.local:3  — MongoDB URI exposed</span></> },
@@ -319,7 +307,7 @@ function TerminalCard() {
     }}>
       {/* titlebar */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", borderBottom: `1px solid ${C.border}`, background: "#080808" }}>
-        {["#ff5f56","#ffbd2e","#27c93f"].map(c => <div key={c} style={{ width: 10, height: 10, borderRadius: "50%", background: c }} />)}
+        {["#ff5f56", "#ffbd2e", "#27c93f"].map(c => <div key={c} style={{ width: 10, height: 10, borderRadius: "50%", background: c }} />)}
         <span style={{ marginLeft: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: C.muted, letterSpacing: "0.5px" }}>terminal — codepulse</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
           {[C.red, C.amber, C.green].map((c, i) => (
@@ -345,9 +333,6 @@ function TerminalCard() {
   );
 }
 
-/* ─────────────────────────────────────────
-   STATS BAR
-───────────────────────────────────────── */
 function StatsBar() {
   const stats = [
     { val: "20+", label: "Secret patterns" },
@@ -370,9 +355,6 @@ function StatsBar() {
   );
 }
 
-/* ─────────────────────────────────────────
-   FEATURES
-───────────────────────────────────────── */
 const features = [
   {
     icon: <PathIcon />, accent: C.cyan,
@@ -447,9 +429,6 @@ function FeatureCard({ icon, accent, title, tag, desc, index }: typeof features[
   );
 }
 
-/* ─────────────────────────────────────────
-   HOW IT WORKS
-───────────────────────────────────────── */
 const steps = [
   { num: "01", title: "Paste your repo URL", desc: "Drop any public GitHub URL. We parse owner/repo and hit the GitHub API to fetch the full file tree.", accent: C.cyan },
   { num: "02", title: "Secrets scanned instantly", desc: "Every file is regex-scanned for 20+ secret patterns before a single AI call is made. Free, instant, zero cost.", accent: C.red },
@@ -502,9 +481,6 @@ function StepCard({ num, title, desc, accent, index }: typeof steps[0] & { index
   );
 }
 
-/* ─────────────────────────────────────────
-   CTA
-───────────────────────────────────────── */
 function CTASection() {
   return (
     <section style={{ position: "relative", zIndex: 2, padding: "140px 24px", textAlign: "center", overflow: "hidden" }}>
@@ -531,9 +507,6 @@ function CTASection() {
   );
 }
 
-/* ─────────────────────────────────────────
-   FOOTER
-───────────────────────────────────────── */
 function Footer() {
   return (
     <footer style={{ position: "relative", zIndex: 2, borderTop: `1px solid ${C.border}`, padding: "28px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
@@ -545,9 +518,6 @@ function Footer() {
   );
 }
 
-/* ─────────────────────────────────────────
-   SHARED COMPONENTS
-───────────────────────────────────────── */
 function Label({ children, center }: { children: React.ReactNode; center?: boolean }) {
   return (
     <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "2.5px", color: C.cyan, textTransform: "uppercase", marginBottom: 20, textAlign: center ? "center" : "left" }}>
@@ -556,29 +526,17 @@ function Label({ children, center }: { children: React.ReactNode; center?: boole
   );
 }
 
-/* ─────────────────────────────────────────
-   MINI SVG ICONS
-───────────────────────────────────────── */
-function PathIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>; }
-function ShieldIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>; }
-function ChartIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>; }
-function ZapIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>; }
-function FileIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>; }
-function HistoryIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.02"/></svg>; }
+function PathIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>; }
+function ShieldIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>; }
+function ChartIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>; }
+function ZapIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>; }
+function FileIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>; }
+function HistoryIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.02" /></svg>; }
 
-/* ─────────────────────────────────────────
-   ROOT
-───────────────────────────────────────── */
 export default function HomePage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
-        :root {
-          --font-display: 'Cabinet Grotesk', sans-serif;
-          --font-sans: 'Cabinet Grotesk', sans-serif;
-          --font-mono: 'JetBrains Mono', monospace;
-        }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
         body { background: #000; }

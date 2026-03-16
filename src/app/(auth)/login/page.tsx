@@ -113,7 +113,7 @@ export default function LoginPage() {
         <ParticleBackground />
 
         {/* glow orb */}
-        <div style={{ position: "fixed", top: "30%", left: "50%", transform: "translate(-50%,-50%)", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(138,162,184,0.05) 0%, transparent 65%)", pointerEvents: "none", zIndex: 0 }} />
+        <div style={{ position: "fixed", top: "30%", left: "50%", transform: "translate(-50%,-50%)", width: 760, height: 760, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 68%)", pointerEvents: "none", zIndex: 0 }} />
 
         {/* nav */}
         <motion.nav initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}

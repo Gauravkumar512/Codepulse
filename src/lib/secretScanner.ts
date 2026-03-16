@@ -1,5 +1,3 @@
-// lib/secretScanner.ts
-
 export type SecretMatch = {
   line: number;
   column: number;
@@ -26,9 +24,6 @@ export type RepoScanResult = {
   files: FileScanResult[];
 };
 
-/* ─────────────────────────────────────────
-   PATTERN LIBRARY — 25+ patterns
-───────────────────────────────────────── */
 const SECRET_PATTERNS: {
   name: string;
   regex: RegExp;
@@ -269,7 +264,7 @@ export function scanFile(path: string, content: string): FileScanResult {
         const matchValue = match[0];
 
         // Skip if it looks like a placeholder
-        const placeholders = ["your_", "your-", "xxx", "placeholder", "changeme", "replace", "example", "dummy", "<", ">", "..."];
+        const placeholders = ["your_", "your-", "their_", "_here", "xxx", "placeholder", "changeme", "replace", "example", "dummy", "<", ">", "..."];
         if (placeholders.some((p) => matchValue.toLowerCase().includes(p))) continue;
 
         // Skip comments (lines starting with // or #)
