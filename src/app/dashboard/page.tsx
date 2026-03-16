@@ -1,173 +1,100 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import axios from "axios";
+import React from "react";
+import NewScanPage from "./NewScanPage";
 
-interface AuthUser {
-  _id: string;
-  username: string;
-  email: string;
-  createdAt: string;
+/* ─────────────────────────────────────────
+   ICONS
+───────────────────────────────────────── */
+const Icons = {
+  logout: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  ),
+};
+
+/* ─────────────────────────────────────────
+   LOGO
+───────────────────────────────────────── */
+function LogoMark() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+      <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="7" fill="rgba(0,217,255,0.1)" stroke="rgba(0,217,255,0.25)" strokeWidth="1"/>
+        <path d="M8 14 L12 10 L16 14 L20 10" stroke="#00d9ff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M8 18 L12 14 L16 18 L20 14" stroke="#00d9ff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity=".4"/>
+      </svg>
+      <span style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", letterSpacing: "-0.3px" }}>
+        CodePulse
+      </span>
+    </div>
+  );
 }
 
-export default function DashboardPage() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    const fetchUser = async() => {
-      try {
-        const response = await fetch("/api/auth/me");
-        if (!response.ok) {
-          router.replace("/login");
-          return;
-        }
-        const data = await response.json();
-        if (data.success) {
-          setUser(data.user);
-        } else {
-          router.replace("/login");
-        }
-      } catch {
-        router.replace("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUser();
-  }, []);
-
-  const handleLogout = async () => {
-    await axios.post("/api/auth/logout");
-    router.replace("/");
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#e8ff47] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
+/* ─────────────────────────────────────────
+   TOPBAR (with logout button)
+───────────────────────────────────────── */
+function Topbar() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white font-mono">
-      {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full w-56 border-r border-white/10 flex flex-col p-6 z-10">
-        {/* Logo */}
-        <div className="mb-10">
-          <span className="text-[#e8ff47] text-lg font-bold tracking-tight">
-            AUTH<span className="text-white">FORGE</span>
-          </span>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex flex-col gap-1 flex-1">
-          {[
-            { label: "Dashboard", href: "/dashboard", active: true, icon: "▣" },
-          ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm transition-all ${
-                item.active
-                  ? "bg-[#e8ff47] text-black font-bold"
-                  : "text-white/50 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <span className="text-xs">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* User + Logout */}
-        <div className="border-t border-white/10 pt-4 mt-4">
-          <div className="text-xs text-white/40 mb-1 truncate">{user?.email}</div>
-          <button
-            onClick={handleLogout}
-            className="cursor-pointer text-xs text-white/40 hover:text-red-400 transition-colors mt-1"
-          >
-            → logout
-          </button>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="ml-56 p-10">
-        {/* Header */}
-        <div className="mb-10 flex items-start justify-between">
-          <div>
-            <p className="text-white/30 text-xs uppercase tracking-widest mb-1">
-              Welcome back
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {user?.username}
-              <span className="text-[#e8ff47]">.</span>
-            </h1>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-white/30 uppercase tracking-widest">Status</div>
-            <div className="flex items-center gap-2 justify-end mt-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#e8ff47] inline-block animate-pulse" />
-              <span className="text-xs text-[#e8ff47]">Active</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-4 mb-10">
-          {[
-            { label: "Account Status", value: "Verified", sub: "Active session" },
-            { label: "Member Since", value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—", sub: "Registration date" },
-            { label: "Auth Method", value: "JWT", sub: "httpOnly cookie" },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="border border-white/10 rounded-lg p-5 hover:border-[#e8ff47]/30 transition-colors"
-            >
-              <div className="text-white/30 text-xs uppercase tracking-widest mb-2">
-                {stat.label}
-              </div>
-              <div className="text-xl font-bold text-white mb-1">{stat.value}</div>
-              <div className="text-xs text-white/30">{stat.sub}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Info block */}
-        <div className="border border-white/10 rounded-lg p-6 mb-6">
-          <div className="text-xs text-white/30 uppercase tracking-widest mb-4">
-            Account Details
-          </div>
-          <div className="grid grid-cols-2 gap-6">
-            {[
-              { label: "Username", value: user?.username },
-              { label: "Email", value: user?.email },
-              { label: "User ID", value: user?._id },
-              { label: "Token Expiry", value: "1 day" },
-            ].map((row) => (
-              <div key={row.label}>
-                <div className="text-xs text-white/30 mb-1">{row.label}</div>
-                <div className="text-sm text-white font-medium truncate">{row.value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Dev note */}
-        <div className="border border-dashed border-[#e8ff47]/20 rounded-lg p-5 bg-[#e8ff47]/5">
-          <div className="text-xs text-[#e8ff47]/60 uppercase tracking-widest mb-1">
-            ◈ Developer Note
-          </div>
-          <p className="text-xs text-white/40 leading-relaxed">
-            This is your scaffolded dashboard. Replace the stats, cards, and content below with your application's actual data and features. The sidebar, auth logic, and user state are production-ready.
-          </p>
-        </div>
-      </div>
+    <div style={{
+      padding: "12px 24px",
+      borderBottom: "1px solid rgba(255,255,255,0.05)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "#060606",
+      flexShrink: 0,
+    }}>
+      <LogoMark />
+      <button
+        onClick={() => alert("logout")}
+        title="Sign out"
+        style={{
+          display: "flex", alignItems: "center", gap: 7,
+          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+          color: "#888", cursor: "pointer", padding: "8px 16px", borderRadius: 8,
+          fontSize: 13, fontWeight: 500, transition: "all 0.15s",
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.color = "#ff4466";
+          e.currentTarget.style.borderColor = "rgba(255,68,102,0.3)";
+          e.currentTarget.style.background = "rgba(255,68,102,0.06)";
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.color = "#888";
+          e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+          e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+        }}>
+        {Icons.logout}
+        Logout
+      </button>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   DASHBOARD ROOT
+───────────────────────────────────────── */
+export default function DashboardLayout() {
+  return (
+    <>
+      <style>{`
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        input, button, select { font-family: inherit; }
+        input::placeholder { color: rgba(255,255,255,0.18); }
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+      `}</style>
+
+      <div style={{ height: "100vh", background: "#000", color: "#f0f0f0", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <Topbar />
+        <div style={{ flex: 1, overflow: "hidden" }}>
+          <NewScanPage />
+        </div>
+      </div>
+    </>
   );
 }

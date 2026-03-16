@@ -1,390 +1,613 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { motion, useScroll, useTransform, AnimatePresence,Variants } from "framer-motion";
 
-export default function HomePage() {
-  return (
-    <div style={{ background: "#080b0f", color: "#e8edf2", fontFamily: "'Syne', sans-serif", overflowX: "hidden", minHeight: "100vh" }}>
-      <GridBackground />
-      <Navbar />
-      <HeroSection />
-      <FeaturesSection />
-      <HowItWorksSection />
-      <CTASection />
-      <Footer />
-    </div>
-  );
-}
+/* ─────────────────────────────────────────
+   TOKENS
+───────────────────────────────────────── */
 
-/* ── Grid background ── */
-function GridBackground() {
+const C = {
+  bg:       "#000000",
+  surface:  "#0a0a0a",
+  card:     "#0f0f0f",
+  border:   "#1a1a1a",
+  border2:  "#252525",
+  cyan:     "#00d9ff",
+  cyanDim:  "rgba(0,217,255,0.08)",
+  cyanMid:  "rgba(0,217,255,0.18)",
+  green:    "#00ff85",
+  red:      "#ff4466",
+  amber:    "#ffaa00",
+  text:     "#f0f0f0",
+  muted:    "#444",
+  muted2:   "#666",
+};
+
+/* ─────────────────────────────────────────
+   PARTICLE CANVAS BACKGROUND
+───────────────────────────────────────── */
+function ParticleBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    let animId: number;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const PARTICLE_COUNT = 80;
+    const particles = Array.from({ length: PARTICLE_COUNT }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.5,
+      alpha: Math.random() * 0.5 + 0.1,
+    }));
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // connections
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 140) {
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(0,217,255,${0.07 * (1 - dist / 140)})`;
+            ctx.lineWidth = 0.5;
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // dots
+      for (const p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0,217,255,${p.alpha})`;
+        ctx.fill();
+
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      }
+
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-        backgroundImage: "linear-gradient(#1e2a36 1px, transparent 1px), linear-gradient(90deg, #1e2a36 1px, transparent 1px)",
-        backgroundSize: "40px 40px", opacity: 0.35,
-      }}
+    <canvas
+      ref={canvasRef}
+      style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.6 }}
     />
   );
 }
 
-/* ── Navbar ── */
-function Navbar() {
-  return (
-    <nav style={{
-      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "18px 48px",
-      background: "rgba(8,11,15,0.85)",
-      backdropFilter: "blur(12px)",
-      borderBottom: "1px solid #1e2a36",
-    }}>
-      <Logo />
-      <ul style={{ display: "flex", gap: 32, listStyle: "none", margin: 0, padding: 0 }}>
-        {[["Features", "#features"], ["How it works", "#how"]].map(([label, href]) => (
-          <li key={label}>
-            <a href={href} style={{ color: "#5a6a7a", textDecoration: "none", fontSize: 14, fontWeight: 600, letterSpacing: "0.3px", transition: "color .2s" }}
-              onMouseEnter={e => (e.currentTarget.style.color = "#e8edf2")}
-              onMouseLeave={e => (e.currentTarget.style.color = "#5a6a7a")}>
-              {label}
-            </a>
-          </li>
-        ))}
-      </ul>
-      <Link href="/signup" style={{
-        background: "#00e5ff", color: "#000", padding: "8px 20px", borderRadius: 6,
-        fontSize: 13, fontWeight: 700, letterSpacing: "0.5px", textDecoration: "none",
-        transition: "box-shadow .2s, transform .15s", display: "inline-block",
-      }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 20px #00e5ff55"; (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>
-        Get started →
-      </Link>
-    </nav>
-  );
-}
-
-function Logo() {
-  return (
-    <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.5px", color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{
-        width: 8, height: 8, borderRadius: "50%", background: "#00e5ff",
-        boxShadow: "0 0 10px #00e5ff", display: "inline-block",
-        animation: "pulse 2s ease infinite",
-      }} />
-      CodePulse
-    </div>
-  );
-}
-
-/* ── Hero ── */
-function HeroSection() {
-  return (
-    <section style={{
-      minHeight: "100vh", display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center", textAlign: "center",
-      padding: "120px 24px 80px", position: "relative", zIndex: 1,
-    }}>
-      {/* Badge */}
-      <div style={{
-        display: "inline-flex", alignItems: "center", gap: 8,
-        background: "#00e5ff22", border: "1px solid #00e5ff55",
-        color: "#00e5ff", padding: "6px 16px", borderRadius: 100,
-        fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500,
-        letterSpacing: "0.5px", marginBottom: 32,
-        animation: "fadeUp .6s ease both",
-      }}>
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00e5ff", display: "inline-block", animation: "pulse 2s ease infinite" }} />
-        AI-powered code review + secret detection
-      </div>
-
-      {/* Heading */}
-      <h1 style={{
-        fontSize: "clamp(48px, 7vw, 88px)", fontWeight: 800, lineHeight: 1.0,
-        letterSpacing: "-2px", marginBottom: 24,
-        animation: "fadeUp .6s .1s ease both", animationFillMode: "both",
-      }}>
-        <span style={{ display: "block", color: "#fff" }}>Your code reviewed.</span>
-        <span style={{
-          display: "block",
-          background: "linear-gradient(90deg, #00e5ff, #00ff88)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-        }}>
-          Your secrets safe.
-        </span>
-      </h1>
-
-      <p style={{
-        fontSize: 18, color: "#5a6a7a", maxWidth: 520, lineHeight: 1.7,
-        fontWeight: 400, marginBottom: 48,
-        animation: "fadeUp .6s .2s ease both", animationFillMode: "both",
-      }}>
-        Paste a GitHub repo URL and get instant AI-powered code review, security scoring, and API leak detection — in seconds.
-      </p>
-
-      {/* CTAs */}
-      <div style={{
-        display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", justifyContent: "center",
-        animation: "fadeUp .6s .3s ease both", animationFillMode: "both",
-      }}>
-        <Link href="/signup" style={{
-          background: "#00e5ff", color: "#000", padding: "14px 32px", borderRadius: 8,
-          fontSize: 15, fontWeight: 700, textDecoration: "none", letterSpacing: "0.3px",
-          transition: "box-shadow .2s, transform .15s", display: "inline-block",
-        }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 32px #00e5ff55"; (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>
-          Scan your repo →
-        </Link>
-        <a href="#how" style={{
-          color: "#e8edf2", padding: "14px 32px", borderRadius: 8,
-          border: "1px solid #1e2a36", fontSize: 15, fontWeight: 600,
-          textDecoration: "none", transition: "border-color .2s, background .2s",
-        }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#5a6a7a"; (e.currentTarget as HTMLElement).style.background = "#111820"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#1e2a36"; (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
-          See how it works
-        </a>
-      </div>
-
-      {/* Code card */}
-      <HeroCard />
-    </section>
-  );
-}
-
-function HeroCard() {
+/* ─────────────────────────────────────────
+   NOISE OVERLAY
+───────────────────────────────────────── */
+function NoiseOverlay() {
   return (
     <div style={{
-      marginTop: 64, width: "100%", maxWidth: 680,
-      background: "#111820", border: "1px solid #1e2a36", borderRadius: 12,
-      overflow: "hidden", textAlign: "left",
-      animation: "fadeUp .6s .4s ease both", animationFillMode: "both",
-      boxShadow: "0 0 60px rgba(0,229,255,0.06)",
-      position: "relative",
-    }}>
-      {/* Title bar */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 8, padding: "14px 18px",
-        borderBottom: "1px solid #1e2a36", background: "#0d1117",
-      }}>
-        {["#ff5f56", "#ffbd2e", "#27c93f"].map(c => (
-          <div key={c} style={{ width: 10, height: 10, borderRadius: "50%", background: c }} />
-        ))}
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "#5a6a7a", marginLeft: "auto" }}>
-          scan results — config.js
-        </span>
-      </div>
+      position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none",
+      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+      opacity: 0.025,
+    }} />
+  );
+}
 
-      {/* Scan animation line */}
+/* ─────────────────────────────────────────
+   GLOW ORBS
+───────────────────────────────────────── */
+function GlowOrbs() {
+  return (
+    <>
       <div style={{
-        position: "absolute", left: 0, right: 0, height: 2,
-        background: "linear-gradient(90deg, transparent, #00e5ff, transparent)",
-        animation: "scan 3s ease-in-out infinite", opacity: 0.6, zIndex: 2,
+        position: "fixed", top: "-20vh", left: "50%", transform: "translateX(-50%)",
+        width: 600, height: 600, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(0,217,255,0.055) 0%, transparent 65%)",
+        pointerEvents: "none", zIndex: 0,
       }} />
-
-      {/* Code */}
-      <div style={{ padding: "20px 24px", fontFamily: "'JetBrains Mono', monospace", fontSize: 13, lineHeight: 1.8 }}>
-        <div><span style={{ color: "#5a6a7a" }}>{"// "}</span><span style={{ color: "#ff3d6b" }}>⚠ CRITICAL — API key exposed</span></div>
-        <div><span style={{ color: "#5a6a7a" }}>{"12 │ "}</span><span style={{ color: "#ff9944" }}>const</span> <span style={{ color: "#fff" }}> apiKey</span> <span style={{ color: "#5a6a7a" }}> = </span><span style={{ color: "#ff3d6b" }}>"AIzaSyD_xK9mN2vP..."</span> <span style={{ color: "#ff3d6b" }}> ← Google API key</span></div>
-        <div style={{ marginTop: 12 }}><span style={{ color: "#5a6a7a" }}>{"// "}</span><span style={{ color: "#00e5ff" }}>AI Review — line 34</span></div>
-        <div><span style={{ color: "#5a6a7a" }}>{"34 │ "}</span><span style={{ color: "#ff9944" }}>fetch</span><span style={{ color: "#fff" }}>(url)</span> <span style={{ color: "#5a6a7a" }}>{"// "}</span><span style={{ color: "#00e5ff" }}>no error handling — wrap in try/catch</span></div>
-        <div style={{ marginTop: 12 }}><span style={{ color: "#5a6a7a" }}>{"// "}</span><span style={{ color: "#00ff88" }}>✓ Suggestion</span></div>
-        <div><span style={{ color: "#5a6a7a" }}>{"   │ "}</span><span style={{ color: "#00ff88" }}>Move secrets to .env → add to .gitignore → rotate key</span></div>
-      </div>
-    </div>
+      <div style={{
+        position: "fixed", bottom: "10vh", right: "-10vw",
+        width: 400, height: 400, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(0,255,133,0.04) 0%, transparent 70%)",
+        pointerEvents: "none", zIndex: 0,
+      }} />
+    </>
   );
 }
 
-/* ── Features ── */
-const features = [
-  { icon: "🤖", title: "AI Code Review", desc: "Line-by-line review powered by Gemini. Detects missing error handling, bad patterns, performance issues, and readability problems with exact line numbers.", tag: "Gemini AI", tagColor: "cyan" },
-  { icon: "🔐", title: "Secret & API Leak Scanner", desc: "20+ regex patterns catch AWS keys, Google API tokens, JWTs, MongoDB URIs, and private keys instantly. AI second pass catches hardcoded passwords regex misses.", tag: "Critical security", tagColor: "red" },
-  { icon: "📊", title: "Quality Score Dashboard", desc: "Visual scores for code quality, security, readability, and best practices. Each score is clickable and jumps to the exact issues that affected it.", tag: "Scored report", tagColor: "green" },
-  { icon: "⚡", title: "Instant Fix Suggestions", desc: "Not just what's wrong — exactly how to fix it. Every issue comes with a specific, actionable suggestion so you know what to do next.", tag: "Actionable", tagColor: "cyan" },
-  { icon: "🗂", title: "Full Repo File Explorer", desc: "Navigate every file in your repo. Monaco Editor renders your code exactly like VS Code. Select any file and get a fresh AI review in seconds.", tag: "Monaco editor", tagColor: "cyan" },
-  { icon: "📁", title: "Scan History", desc: "Every scan is saved to your account. Track your progress over time, revisit past reviews, and see how your code quality improves with each commit.", tag: "Per account", tagColor: "green" },
-];
+/* ─────────────────────────────────────────
+   NAVBAR
+───────────────────────────────────────── */
+function Navbar() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", fn);
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
 
-const tagStyles: Record<string, React.CSSProperties> = {
-  cyan: { background: "#00e5ff22", color: "#00e5ff", border: "1px solid #00e5ff55" },
-  green: { background: "#00ff8818", color: "#00ff88", border: "1px solid #00ff8844" },
-  red: { background: "#ff3d6b11", color: "#ff3d6b", border: "1px solid #ff3d6b33" },
-};
-
-const iconBg: Record<string, React.CSSProperties> = {
-  cyan: { background: "#00e5ff11", border: "1px solid #00e5ff33" },
-  green: { background: "#00ff8818", border: "1px solid #00ff8844" },
-  red: { background: "#ff3d6b11", border: "1px solid #ff3d6b33" },
-};
-
-function FeaturesSection() {
   return (
-    <section id="features" style={{ position: "relative", zIndex: 1, padding: "100px 24px" }}>
-      <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-        <SectionLabel>Features</SectionLabel>
-        <h2 style={{ fontSize: "clamp(32px,4vw,52px)", fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1.1, marginBottom: 16 }}>
-          Everything your code<br />needs to be production-ready
-        </h2>
-        <p style={{ fontSize: 16, color: "#5a6a7a", maxWidth: 480, lineHeight: 1.7 }}>
-          Three powerful engines working together so you ship cleaner, safer code.
-        </p>
-
-        <div style={{
-          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: 1, background: "#1e2a36", border: "1px solid #1e2a36",
-          borderRadius: 12, overflow: "hidden", marginTop: 64,
-        }}>
-          {features.map((f) => (
-            <FeatureCard key={f.title} {...f} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FeatureCard({ icon, title, desc, tag, tagColor }: typeof features[0]) {
-  const [hovered, setHovered] = React.useState(false);
-  return (
-    <div
-      style={{ background: hovered ? "#111820" : "#080b0f", padding: "40px 36px", transition: "background .25s", cursor: "default" }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+    <motion.nav
+      initial={{ y: -60, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 200,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 40px", height: 60,
+        background: scrolled ? "rgba(0,0,0,0.85)" : "transparent",
+        backdropFilter: scrolled ? "blur(20px)" : "none",
+        borderBottom: scrolled ? `1px solid ${C.border}` : "1px solid transparent",
+        transition: "all 0.4s ease",
+      }}
     >
-      <div style={{ width: 40, height: 40, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, marginBottom: 20, ...iconBg[tagColor] }}>
-        {icon}
+      <LogoMark />
+      <div style={{ display: "flex", gap: 36 }}>
+        {[["Features", "#features"], ["How it works", "#how"]].map(([l, h]) => (
+          <NavLink key={l} href={h}>{l}</NavLink>
+        ))}
       </div>
-      <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 10, letterSpacing: "-0.3px" }}>{title}</h3>
-      <p style={{ fontSize: 14, color: "#5a6a7a", lineHeight: 1.7 }}>{desc}</p>
-      <span style={{ display: "inline-block", marginTop: 16, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "1px", padding: "3px 10px", borderRadius: 100, fontWeight: 500, ...tagStyles[tagColor] }}>
-        {tag}
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <Link href="/signin" style={{ color: C.muted2, fontSize: 13, fontWeight: 500, textDecoration: "none", fontFamily: "var(--font-sans)", letterSpacing: "0.2px" }}>
+          Sign in
+        </Link>
+        <GlowButton href="/signup" small>Get started</GlowButton>
+      </div>
+    </motion.nav>
+  );
+}
+
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <a href={href}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{ color: hov ? C.text : C.muted2, fontSize: 13, fontWeight: 500, textDecoration: "none", transition: "color 0.2s", fontFamily: "var(--font-sans)", letterSpacing: "0.2px" }}>
+      {children}
+    </a>
+  );
+}
+
+function LogoMark() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="7" fill={C.cyanDim} stroke={C.cyanMid} strokeWidth="1" />
+        <path d="M8 14 L12 10 L16 14 L20 10" stroke={C.cyan} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8 18 L12 14 L16 18 L20 14" stroke={C.cyan} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+      </svg>
+      <span style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: "var(--font-mono)", letterSpacing: "-0.3px" }}>
+        CodePulse
       </span>
     </div>
   );
 }
 
-/* ── How it works ── */
-const steps = [
-  { num: "01", title: "Paste your repo URL", desc: "Drop any public GitHub repo link. CodePulse fetches the full file tree instantly using the GitHub API." },
-  { num: "02", title: "Secret scan runs first", desc: "All files are scanned in milliseconds for API keys, tokens, and secrets before a single AI call is made." },
-  { num: "03", title: "Select a file to review", desc: "Browse the file tree, click any file, and watch the AI review stream in live — line by line, in real time." },
-  { num: "04", title: "Get your score report", desc: "See your quality scores, fix suggestions, and every security issue — all in one clean dashboard." },
+/* ─────────────────────────────────────────
+   GLOW BUTTON
+───────────────────────────────────────── */
+function GlowButton({ href, children, small, outline }: { href: string; children: React.ReactNode; small?: boolean; outline?: boolean }) {
+  const [hov, setHov] = useState(false);
+  const base: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 6,
+    padding: small ? "7px 18px" : "12px 28px",
+    borderRadius: 8,
+    fontSize: small ? 13 : 15,
+    fontWeight: 600, letterSpacing: "0.2px",
+    textDecoration: "none",
+    transition: "all 0.2s ease",
+    fontFamily: "var(--font-sans)",
+    cursor: "pointer",
+    border: "none",
+    position: "relative",
+    overflow: "hidden",
+  };
+
+  if (outline) return (
+    <Link href={href}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{ ...base, background: "transparent", color: C.text, border: `1px solid ${hov ? C.border2 : C.border}`, boxShadow: "none" }}>
+      {children}
+    </Link>
+  );
+
+  return (
+    <Link href={href}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{
+        ...base,
+        background: hov ? "#00e5ff" : C.cyan,
+        color: "#000",
+        boxShadow: hov ? `0 0 32px rgba(0,217,255,0.45), 0 0 64px rgba(0,217,255,0.15)` : `0 0 16px rgba(0,217,255,0.2)`,
+        transform: hov ? "translateY(-1px)" : "translateY(0)",
+      }}>
+      {children}
+      <span style={{ fontSize: small ? 12 : 14 }}>→</span>
+    </Link>
+  );
+}
+
+/* ─────────────────────────────────────────
+   HERO
+───────────────────────────────────────── */
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 32 },
+  show: (i: number = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.7, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] } }),
+};
+
+function HeroSection() {
+  return (
+    <section style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "120px 24px 80px", position: "relative", zIndex: 2 }}>
+
+      <motion.div custom={0} variants={fadeUp} initial="hidden" animate="show"
+        style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.cyanDim, border: `1px solid ${C.cyanMid}`, color: C.cyan, padding: "5px 14px", borderRadius: 100, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 500, letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 40 }}>
+        <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.cyan, display: "inline-block", animation: "cpulse 2s ease infinite" }} />
+        AI Code Review · Secret Detection · Quality Scoring
+      </motion.div>
+
+      <motion.h1 custom={1} variants={fadeUp} initial="hidden" animate="show"
+        style={{ fontSize: "clamp(52px, 7.5vw, 96px)", fontWeight: 800, lineHeight: 0.95, letterSpacing: "-3px", marginBottom: 28, fontFamily: "var(--font-display)" }}>
+        <span style={{ display: "block", color: C.text }}>Review.</span>
+        <span style={{ display: "block", color: C.text }}>Detect.</span>
+        <span style={{ display: "block", background: `linear-gradient(100deg, ${C.cyan} 0%, ${C.green} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+          Ship clean.
+        </span>
+      </motion.h1>
+
+      <motion.p custom={2} variants={fadeUp} initial="hidden" animate="show"
+        style={{ fontSize: 17, color: C.muted2, maxWidth: 480, lineHeight: 1.75, fontWeight: 400, marginBottom: 48, fontFamily: "var(--font-sans)" }}>
+        Paste any GitHub repo URL. Get instant AI code review, API leak scanning, and a full quality score — all streaming live.
+      </motion.p>
+
+      <motion.div custom={3} variants={fadeUp} initial="hidden" animate="show"
+        style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "center", marginBottom: 72 }}>
+        <GlowButton href="/signup">Scan your repo</GlowButton>
+        <GlowButton href="#how" outline>See how it works</GlowButton>
+      </motion.div>
+
+      <motion.div custom={4} variants={fadeUp} initial="hidden" animate="show" style={{ width: "100%", maxWidth: 720 }}>
+        <TerminalCard />
+      </motion.div>
+    </section>
+  );
+}
+
+function TerminalCard() {
+  const lines = [
+    { delay: 0,    content: <><span style={{ color: C.muted2 }}>$</span> <span style={{ color: C.cyan }}>codepulse</span> <span style={{ color: C.text }}>scan</span> <span style={{ color: C.amber }}>github.com/user/my-app</span></> },
+    { delay: 600,  content: <><span style={{ color: C.muted }}>›</span> <span style={{ color: C.muted2 }}>Fetching repo tree... </span><span style={{ color: C.green }}>42 files found</span></> },
+    { delay: 1100, content: <><span style={{ color: C.muted }}>›</span> <span style={{ color: C.muted2 }}>Running secret scanner...</span></> },
+    { delay: 1600, content: <><span style={{ color: C.red }}>  ⚠ CRITICAL</span><span style={{ color: C.muted2 }}> config.js:12 — AWS key exposed</span></> },
+    { delay: 1900, content: <><span style={{ color: C.red }}>  ⚠ CRITICAL</span><span style={{ color: C.muted2 }}> .env.local:3  — MongoDB URI exposed</span></> },
+    { delay: 2400, content: <><span style={{ color: C.muted }}>›</span> <span style={{ color: C.muted2 }}>Running AI review on </span><span style={{ color: C.cyan }}>api/auth.js</span><span style={{ color: C.muted2 }}>...</span></> },
+    { delay: 3000, content: <><span style={{ color: C.amber }}>  ⚡ HIGH</span><span style={{ color: C.muted2 }}>    line 34 — no error handling on async fetch</span></> },
+    { delay: 3300, content: <><span style={{ color: C.amber }}>  ⚡ MED</span><span style={{ color: C.muted2 }}>     line 67 — raw password comparison (use bcrypt)</span></> },
+    { delay: 3800, content: <><span style={{ color: C.muted }}>›</span> <span style={{ color: C.muted2 }}>Security score: </span><span style={{ color: C.red }}>38/100</span><span style={{ color: C.muted2 }}> · Quality: </span><span style={{ color: C.amber }}>71/100</span></> },
+    { delay: 4200, content: <><span style={{ color: C.green }}>✓</span><span style={{ color: C.muted2 }}> Full report ready — </span><span style={{ color: C.cyan }}>view dashboard</span></> },
+  ];
+
+  const [visible, setVisible] = useState<number[]>([]);
+  useEffect(() => {
+    lines.forEach((l, i) => {
+      setTimeout(() => setVisible(v => [...v, i]), l.delay + 800);
+    });
+  }, []);
+
+  return (
+    <div style={{
+      background: C.card, border: `1px solid ${C.border}`, borderRadius: 14,
+      overflow: "hidden", textAlign: "left",
+      boxShadow: `0 0 0 1px ${C.border}, 0 40px 80px rgba(0,0,0,0.6), 0 0 60px rgba(0,217,255,0.04)`,
+    }}>
+      {/* titlebar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", borderBottom: `1px solid ${C.border}`, background: "#080808" }}>
+        {["#ff5f56","#ffbd2e","#27c93f"].map(c => <div key={c} style={{ width: 10, height: 10, borderRadius: "50%", background: c }} />)}
+        <span style={{ marginLeft: 8, fontFamily: "var(--font-mono)", fontSize: 11, color: C.muted, letterSpacing: "0.5px" }}>terminal — codepulse</span>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          {[C.red, C.amber, C.green].map((c, i) => (
+            <span key={i} style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: c, background: `${c}18`, padding: "2px 7px", borderRadius: 4, letterSpacing: "0.5px" }}>
+              {["2 critical", "2 high", "ai ready"][i]}
+            </span>
+          ))}
+        </div>
+      </div>
+      {/* code */}
+      <div style={{ padding: "20px 24px", fontFamily: "var(--font-mono)", fontSize: 13, lineHeight: 2, minHeight: 280 }}>
+        {lines.map((l, i) => (
+          <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={visible.includes(i) ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.35, ease: "easeOut" }}>
+            {l.content}
+          </motion.div>
+        ))}
+        {visible.length < lines.length && (
+          <span style={{ display: "inline-block", width: 7, height: 14, background: C.cyan, opacity: 0.8, animation: "blink 1s step-end infinite", verticalAlign: "middle" }} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   STATS BAR
+───────────────────────────────────────── */
+function StatsBar() {
+  const stats = [
+    { val: "20+", label: "Secret patterns" },
+    { val: "~2s", label: "Avg scan time" },
+    { val: "100%", label: "Free to use" },
+    { val: "AI", label: "Gemini powered" },
+  ];
+  return (
+    <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.8 }}
+      style={{ position: "relative", zIndex: 2, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, background: "#050505" }}>
+      <div style={{ maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
+        {stats.map((s, i) => (
+          <div key={i} style={{ padding: "32px 24px", textAlign: "center", borderRight: i < 3 ? `1px solid ${C.border}` : "none" }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: C.cyan, fontFamily: "var(--font-mono)", letterSpacing: "-1px", marginBottom: 4 }}>{s.val}</div>
+            <div style={{ fontSize: 12, color: C.muted2, fontFamily: "var(--font-sans)", letterSpacing: "0.5px", textTransform: "uppercase" }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   FEATURES
+───────────────────────────────────────── */
+const features = [
+  {
+    icon: <PathIcon />, accent: C.cyan,
+    title: "AI Code Review", tag: "Gemini",
+    desc: "Line-by-line review streamed live. Detects bad patterns, missing error handling, and performance issues — with exact line numbers.",
+  },
+  {
+    icon: <ShieldIcon />, accent: C.red,
+    title: "Secret Scanner", tag: "Critical",
+    desc: "20+ regex patterns instantly surface AWS keys, JWTs, MongoDB URIs, and private keys. AI second pass catches what regex misses.",
+  },
+  {
+    icon: <ChartIcon />, accent: C.green,
+    title: "Quality Scores", tag: "Dashboard",
+    desc: "Security, quality, readability scores in one view. Every score links to the exact lines causing the deduction.",
+  },
+  {
+    icon: <ZapIcon />, accent: C.amber,
+    title: "Fix Suggestions", tag: "Actionable",
+    desc: "Not just what's wrong — exactly how to fix it. Every issue ships with a concrete, specific suggestion.",
+  },
+  {
+    icon: <FileIcon />, accent: C.cyan,
+    title: "File Explorer", tag: "Monaco",
+    desc: "Full repo file tree. Click any file, get a live-streamed AI review in the same Monaco editor you use in VS Code.",
+  },
+  {
+    icon: <HistoryIcon />, accent: C.green,
+    title: "Scan History", tag: "Per user",
+    desc: "Every scan saved to your account. Watch your quality scores climb as you iterate and improve.",
+  },
 ];
 
-function HowItWorksSection() {
+function FeaturesSection() {
   return (
-    <section id="how" style={{
-      position: "relative", zIndex: 1, padding: "100px 24px",
-      background: "#0d1117",
-      borderTop: "1px solid #1e2a36", borderBottom: "1px solid #1e2a36",
-    }}>
+    <section id="features" style={{ position: "relative", zIndex: 2, padding: "120px 24px" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-        <SectionLabel>How it works</SectionLabel>
-        <h2 style={{ fontSize: "clamp(32px,4vw,52px)", fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1.1, marginBottom: 16 }}>
-          From repo URL to<br />full report in seconds
-        </h2>
-        <p style={{ fontSize: 16, color: "#5a6a7a", maxWidth: 480, lineHeight: 1.7 }}>No setup. No installs. Just paste and go.</p>
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+          <Label>Features</Label>
+          <h2 style={{ fontSize: "clamp(36px,4vw,56px)", fontWeight: 800, letterSpacing: "-2px", lineHeight: 1.05, marginBottom: 16, fontFamily: "var(--font-display)", color: C.text }}>
+            Everything you need to<br />ship production-ready code.
+          </h2>
+          <p style={{ fontSize: 16, color: C.muted2, maxWidth: 440, lineHeight: 1.75, fontFamily: "var(--font-sans)" }}>
+            Three engines. One dashboard. Zero excuses.
+          </p>
+        </motion.div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 0, marginTop: 64, position: "relative" }}>
-          {/* Connector line */}
-          <div style={{
-            position: "absolute", top: 28, left: "10%", right: "10%", height: 1,
-            background: "linear-gradient(90deg, transparent, #1e2a36, #1e2a36, transparent)",
-          }} />
-          {steps.map((s) => <StepCard key={s.num} {...s} />)}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden", marginTop: 64 }}>
+          {features.map((f, i) => <FeatureCard key={i} {...f} index={i} />)}
         </div>
       </div>
     </section>
   );
 }
 
-function StepCard({ num, title, desc }: typeof steps[0]) {
-  const [hovered, setHovered] = React.useState(false);
+function FeatureCard({ icon, accent, title, tag, desc, index }: typeof features[0] & { index: number }) {
+  const [hov, setHov] = useState(false);
   return (
-    <div style={{ textAlign: "center", padding: "0 24px" }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}>
-      <div style={{
-        width: 56, height: 56, borderRadius: "50%",
-        background: "#080b0f",
-        border: hovered ? "1px solid #00e5ff" : "1px solid #1e2a36",
-        boxShadow: hovered ? "0 0 16px #00e5ff22" : "none",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 500, color: "#00e5ff",
-        margin: "0 auto 24px", position: "relative", zIndex: 1,
-        transition: "border-color .25s, box-shadow .25s",
-      }}>
-        {num}
+    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.07 }}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{ background: hov ? "#0d0d0d" : C.surface, padding: "36px 32px", transition: "background 0.2s", cursor: "default", position: "relative", overflow: "hidden" }}>
+      {hov && <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 30% 40%, ${accent}08 0%, transparent 60%)`, pointerEvents: "none" }} />}
+      <div style={{ width: 40, height: 40, borderRadius: 10, background: `${accent}10`, border: `1px solid ${accent}25`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, color: accent }}>
+        {icon}
       </div>
-      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8, letterSpacing: "-0.2px" }}>{title}</h3>
-      <p style={{ fontSize: 13, color: "#5a6a7a", lineHeight: 1.7 }}>{desc}</p>
-    </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: "var(--font-sans)", letterSpacing: "-0.3px" }}>{title}</h3>
+        <span style={{ fontSize: 9, fontFamily: "var(--font-mono)", color: accent, background: `${accent}12`, border: `1px solid ${accent}28`, padding: "2px 8px", borderRadius: 100, letterSpacing: "1px", textTransform: "uppercase" }}>{tag}</span>
+      </div>
+      <p style={{ fontSize: 14, color: C.muted2, lineHeight: 1.75, fontFamily: "var(--font-sans)" }}>{desc}</p>
+    </motion.div>
   );
 }
 
-/* ── CTA ── */
-function CTASection() {
+/* ─────────────────────────────────────────
+   HOW IT WORKS
+───────────────────────────────────────── */
+const steps = [
+  { num: "01", title: "Paste your repo URL", desc: "Drop any public GitHub URL. We parse owner/repo and hit the GitHub API to fetch the full file tree.", accent: C.cyan },
+  { num: "02", title: "Secrets scanned instantly", desc: "Every file is regex-scanned for 20+ secret patterns before a single AI call is made. Free, instant, zero cost.", accent: C.red },
+  { num: "03", title: "Select a file", desc: "Browse the explorer. Click any file — watch the AI review stream directly into Monaco Editor, line by line.", accent: C.green },
+  { num: "04", title: "See your report", desc: "Quality score dashboard. Fix suggestions table. Full history. Everything in one clean view.", accent: C.amber },
+];
+
+function HowItWorksSection() {
   return (
-    <section style={{ position: "relative", zIndex: 1, padding: "120px 24px", textAlign: "center" }}>
-      {/* Glow */}
-      <div style={{
-        position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)",
-        width: 600, height: 300,
-        background: "radial-gradient(ellipse, rgba(0,229,255,0.08) 0%, transparent 70%)",
-        pointerEvents: "none",
-      }} />
-      <div style={{ maxWidth: 1080, margin: "0 auto", position: "relative" }}>
-        <SectionLabel>Get started</SectionLabel>
-        <h2 style={{ fontSize: "clamp(32px,4vw,52px)", fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1.1, marginBottom: 24 }}>
-          Ready to clean up your code?
-        </h2>
-        <p style={{ fontSize: 16, color: "#5a6a7a", maxWidth: 480, lineHeight: 1.7, margin: "0 auto 48px" }}>
-          Free to use. No credit card. Just your GitHub repo URL.
-        </p>
-        <Link href="/signup" style={{
-          background: "#00e5ff", color: "#000", padding: "14px 32px", borderRadius: 8,
-          fontSize: 15, fontWeight: 700, textDecoration: "none", letterSpacing: "0.3px",
-          transition: "box-shadow .2s, transform .15s", display: "inline-block",
-        }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 32px #00e5ff55"; (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>
-          Scan your first repo →
-        </Link>
-        <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "#5a6a7a", marginTop: 20 }}>
-          Free · <span style={{ color: "#00e5ff" }}>3 scans/day</span> · No setup required
-        </p>
+    <section id="how" style={{ position: "relative", zIndex: 2, padding: "120px 24px", background: "#030303", borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+          <Label>How it works</Label>
+          <h2 style={{ fontSize: "clamp(36px,4vw,56px)", fontWeight: 800, letterSpacing: "-2px", lineHeight: 1.05, marginBottom: 16, fontFamily: "var(--font-display)", color: C.text }}>
+            Repo URL to full report.<br />No setup needed.
+          </h2>
+        </motion.div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 0, marginTop: 72, position: "relative" }}>
+          {/* connector */}
+          <div style={{ position: "absolute", top: 30, left: "8%", right: "8%", height: 1, background: `linear-gradient(90deg, transparent, ${C.border}, ${C.border}, transparent)` }} />
+          {steps.map((s, i) => <StepCard key={i} {...s} index={i} />)}
+        </div>
       </div>
     </section>
   );
 }
 
-/* ── Footer ── */
+function StepCard({ num, title, desc, accent, index }: typeof steps[0] & { index: number }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <motion.div initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: index * 0.1 }}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{ textAlign: "center", padding: "0 28px", paddingBottom: 8 }}>
+      <div style={{
+        width: 60, height: 60, borderRadius: "50%",
+        background: hov ? `${accent}12` : "#050505",
+        border: hov ? `1px solid ${accent}60` : `1px solid ${C.border}`,
+        boxShadow: hov ? `0 0 24px ${accent}20` : "none",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 600, color: accent,
+        margin: "0 auto 28px", position: "relative", zIndex: 1,
+        transition: "all 0.25s ease",
+      }}>
+        {num}
+      </div>
+      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, color: C.text, fontFamily: "var(--font-sans)", letterSpacing: "-0.2px" }}>{title}</h3>
+      <p style={{ fontSize: 13, color: C.muted2, lineHeight: 1.75, fontFamily: "var(--font-sans)" }}>{desc}</p>
+    </motion.div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   CTA
+───────────────────────────────────────── */
+function CTASection() {
+  return (
+    <section style={{ position: "relative", zIndex: 2, padding: "140px 24px", textAlign: "center", overflow: "hidden" }}>
+      <div style={{
+        position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
+        width: 700, height: 400,
+        background: `radial-gradient(ellipse, ${C.cyanDim} 0%, transparent 65%)`,
+        pointerEvents: "none",
+      }} />
+      <motion.div initial={{ opacity: 0, y: 32 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} style={{ position: "relative" }}>
+        <Label center>Get started free</Label>
+        <h2 style={{ fontSize: "clamp(40px,5vw,68px)", fontWeight: 800, letterSpacing: "-2.5px", lineHeight: 1.0, marginBottom: 24, fontFamily: "var(--font-display)", color: C.text }}>
+          Ready to clean up<br />your codebase?
+        </h2>
+        <p style={{ fontSize: 16, color: C.muted2, maxWidth: 400, lineHeight: 1.75, margin: "0 auto 48px", fontFamily: "var(--font-sans)" }}>
+          Free. No credit card. Just your GitHub repo URL and 30 seconds of your time.
+        </p>
+        <GlowButton href="/signup">Scan your first repo</GlowButton>
+        <p style={{ marginTop: 20, fontFamily: "var(--font-mono)", fontSize: 12, color: C.muted, letterSpacing: "0.5px" }}>
+          Free · <span style={{ color: C.cyan }}>3 scans/day</span> · No setup
+        </p>
+      </motion.div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────
+   FOOTER
+───────────────────────────────────────── */
 function Footer() {
   return (
-    <footer style={{
-      borderTop: "1px solid #1e2a36", padding: "32px 48px",
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      position: "relative", zIndex: 1,
-    }}>
-      <Logo />
-      <p style={{ fontSize: 12, color: "#5a6a7a", fontFamily: "'JetBrains Mono', monospace" }}>
+    <footer style={{ position: "relative", zIndex: 2, borderTop: `1px solid ${C.border}`, padding: "28px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+      <LogoMark />
+      <p style={{ fontSize: 12, color: C.muted, fontFamily: "var(--font-mono)", letterSpacing: "0.3px" }}>
         Built with Next.js · Gemini AI · MongoDB
       </p>
     </footer>
   );
 }
 
-/* ── Shared ── */
-function SectionLabel({ children }: { children: React.ReactNode }) {
+/* ─────────────────────────────────────────
+   SHARED COMPONENTS
+───────────────────────────────────────── */
+function Label({ children, center }: { children: React.ReactNode; center?: boolean }) {
   return (
-    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "2px", color: "#00e5ff", textTransform: "uppercase", marginBottom: 16 }}>
+    <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "2.5px", color: C.cyan, textTransform: "uppercase", marginBottom: 20, textAlign: center ? "center" : "left" }}>
       {children}
     </div>
   );
 }
 
-// Need React for useState
-import React from "react";
+/* ─────────────────────────────────────────
+   MINI SVG ICONS
+───────────────────────────────────────── */
+function PathIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>; }
+function ShieldIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>; }
+function ChartIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>; }
+function ZapIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>; }
+function FileIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>; }
+function HistoryIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.02"/></svg>; }
+
+/* ─────────────────────────────────────────
+   ROOT
+───────────────────────────────────────── */
+export default function HomePage() {
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+        :root {
+          --font-display: 'Cabinet Grotesk', sans-serif;
+          --font-sans: 'Cabinet Grotesk', sans-serif;
+          --font-mono: 'JetBrains Mono', monospace;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { background: #000; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+        @keyframes cpulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.75)} }
+        @keyframes blink   { 0%,100%{opacity:1} 50%{opacity:0} }
+      `}</style>
+
+      <div style={{ background: "#000", color: C.text, minHeight: "100vh", overflowX: "hidden" }}>
+        <ParticleBackground />
+        <NoiseOverlay />
+        <GlowOrbs />
+        <Navbar />
+        <HeroSection />
+        <StatsBar />
+        <FeaturesSection />
+        <HowItWorksSection />
+        <CTASection />
+        <Footer />
+      </div>
+    </>
+  );
+}
