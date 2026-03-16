@@ -222,19 +222,6 @@ export default function NewScanPage() {
               <span style={{ fontSize:11, color:"#444" }}>branch: {repoMeta.branch}</span>
               <span style={{ fontSize:11, color:"#444" }}>{repoMeta.totalFiles} files</span>
               <div style={{ marginLeft:"auto", display:"flex", gap:8, alignItems:"center" }}>
-                {selectedFile && fileContent && review.state === "idle" && (
-                  <motion.button initial={{ opacity:0, scale:.9 }} animate={{ opacity:1, scale:1 }}
-                    onClick={handleRunReview}
-                    style={{ padding:"5px 14px", borderRadius:6, border:"none", cursor:"pointer", background:"#00d9ff", color:"#000", fontSize:11, fontWeight:700, boxShadow:"0 0 12px rgba(0,217,255,0.2)" }}>
-                    Run AI review →
-                  </motion.button>
-                )}
-                {review.state === "streaming" && (
-                  <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#00d9ff" }}>
-                    <span style={{ width:6, height:6, borderRadius:"50%", background:"#00d9ff", animation:"cpulse 1s ease infinite", display:"inline-block" }}/>
-                    Reviewing...
-                  </div>
-                )}
               </div>
             </motion.div>
           )}
@@ -303,6 +290,7 @@ export default function NewScanPage() {
               error={review.error}
               onRun={handleRunReview}
               onReset={review.reset}
+              onStop={review.stopReview}
               filename={selectedFile?.name ?? null}
               hasFile={!!fileContent}
             />

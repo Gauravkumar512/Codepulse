@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ─────────────────────────────────────────
@@ -190,8 +190,14 @@ export function useReview() {
   const [result, setResult]     = useState<ReviewResult | null>(null);
   const [rawStream, setRaw]     = useState("");
   const [error, setError]       = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
  const runReview = useCallback(async (filename: string, code: string) => {
+  // Abort any previous in-flight request
+  abortRef.current?.abort();
+  const controller = new AbortController();
+  abortRef.current = controller;
+
   setState("streaming");
   setResult(null);
   setRaw("");
@@ -202,6 +208,7 @@ export function useReview() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ filename, code }),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -214,6 +221,10 @@ export function useReview() {
     let full = "";
 
     while (true) {
+      if (controller.signal.aborted) {
+        await reader.cancel();
+        break;
+      }
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -239,6 +250,12 @@ export function useReview() {
       }
     }
 
+    // If aborted, go back to idle silently
+    if (controller.signal.aborted) {
+      setState("idle");
+      return;
+    }
+
     // parse final JSON
     const clean = full
                     .replace(/<think>[\s\S]*?<\/think>/g, "")
@@ -254,26 +271,39 @@ export function useReview() {
     setState("done");
 
   } catch (err: any) {
+    if (err.name === "AbortError") {
+      setState("idle");
+      return;
+    }
     setError(err.message || "Something went wrong");
     setState("error");
   }
 }, []);
 
+  const stopReview = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setState("idle");
+    setRaw("");
+  }, []);
+
   const reset = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     setState("idle");
     setResult(null);
     setRaw("");
     setError(null);
   }, []);
 
-  return { state, result, rawStream, error, runReview, reset };
+  return { state, result, rawStream, error, runReview, stopReview, reset };
 }
 
 /* ─────────────────────────────────────────
    REVIEW PANEL UI
 ───────────────────────────────────────── */
 export function ReviewPanel({
-  state, result, rawStream, error, onRun, onReset, filename, hasFile,
+  state, result, rawStream, error, onRun, onReset, onStop, filename, hasFile,
 }: {
   state: ReviewState;
   result: ReviewResult | null;
@@ -281,6 +311,7 @@ export function ReviewPanel({
   error: string | null;
   onRun: () => void;
   onReset: () => void;
+  onStop: () => void;
   filename: string | null;
   hasFile: boolean;
 }) {
@@ -311,7 +342,25 @@ export function ReviewPanel({
 
   /* ── streaming ── */
   if (state === "streaming") {
-    return <StreamingIndicator raw={rawStream} />;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <StreamingIndicator raw={rawStream} />
+        <div style={{ padding: "0 16px 16px", flexShrink: 0 }}>
+          <button onClick={onStop}
+            style={{
+              width: "100%", padding: "9px 0", borderRadius: 7, border: "1px solid rgba(255,68,102,0.3)",
+              background: "rgba(255,68,102,0.08)", color: "#ff4466", fontSize: 12, fontWeight: 700,
+              fontFamily: "var(--cp-mono)", cursor: "pointer", display: "flex", alignItems: "center",
+              justifyContent: "center", gap: 7, transition: "all 0.2s",
+            }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#ff4466" stroke="none">
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+            </svg>
+            Stop generating
+          </button>
+        </div>
+      </div>
+    );
   }
 
   /* ── error ── */
