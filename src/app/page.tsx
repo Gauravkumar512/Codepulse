@@ -4,30 +4,23 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform, AnimatePresence,Variants } from "framer-motion";
 
-/* ─────────────────────────────────────────
-   TOKENS
-───────────────────────────────────────── */
-
 const C = {
   bg:       "#000000",
   surface:  "#0a0a0a",
   card:     "#0f0f0f",
   border:   "#1a1a1a",
   border2:  "#252525",
-  cyan:     "#00d9ff",
-  cyanDim:  "rgba(0,217,255,0.08)",
-  cyanMid:  "rgba(0,217,255,0.18)",
-  green:    "#00ff85",
-  red:      "#ff4466",
-  amber:    "#ffaa00",
-  text:     "#f0f0f0",
-  muted:    "#444",
+  cyan:     "#8aa2b8",
+  cyanDim:  "rgba(138,162,184,0.07)",
+  cyanMid:  "rgba(138,162,184,0.16)",
+  green:    "#7a9c8e",
+  red:      "#c4707e",
+  amber:    "#b8976a",
+  text:     "#d4d4d4",
+  muted:    "#3a3a3a",
   muted2:   "#666",
 };
 
-/* ─────────────────────────────────────────
-   PARTICLE CANVAS BACKGROUND
-───────────────────────────────────────── */
 function ParticleBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -65,7 +58,7 @@ function ParticleBackground() {
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 140) {
             ctx.beginPath();
-            ctx.strokeStyle = `rgba(0,217,255,${0.07 * (1 - dist / 140)})`;
+            ctx.strokeStyle = `rgba(138,162,184,${0.05 * (1 - dist / 140)})`;
             ctx.lineWidth = 0.5;
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
@@ -78,7 +71,7 @@ function ParticleBackground() {
       for (const p of particles) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0,217,255,${p.alpha})`;
+        ctx.fillStyle = `rgba(138,162,184,${p.alpha * 0.6})`;
         ctx.fill();
 
         p.x += p.vx;
@@ -127,13 +120,13 @@ function GlowOrbs() {
       <div style={{
         position: "fixed", top: "-20vh", left: "50%", transform: "translateX(-50%)",
         width: 600, height: 600, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(0,217,255,0.055) 0%, transparent 65%)",
+        background: "radial-gradient(circle, rgba(138,162,184,0.035) 0%, transparent 65%)",
         pointerEvents: "none", zIndex: 0,
       }} />
       <div style={{
         position: "fixed", bottom: "10vh", right: "-10vw",
         width: 400, height: 400, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(0,255,133,0.04) 0%, transparent 70%)",
+        background: "radial-gradient(circle, rgba(122,156,142,0.03) 0%, transparent 70%)",
         pointerEvents: "none", zIndex: 0,
       }} />
     </>
@@ -241,9 +234,9 @@ function GlowButton({ href, children, small, outline }: { href: string; children
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
         ...base,
-        background: hov ? "#00e5ff" : C.cyan,
+        background: hov ? "#9ab4c8" : C.cyan,
         color: "#000",
-        boxShadow: hov ? `0 0 32px rgba(0,217,255,0.45), 0 0 64px rgba(0,217,255,0.15)` : `0 0 16px rgba(0,217,255,0.2)`,
+        boxShadow: hov ? `0 0 24px rgba(138,162,184,0.3), 0 0 48px rgba(138,162,184,0.1)` : `0 0 12px rgba(138,162,184,0.15)`,
         transform: hov ? "translateY(-1px)" : "translateY(0)",
       }}>
       {children}
@@ -274,7 +267,7 @@ function HeroSection() {
         style={{ fontSize: "clamp(52px, 7.5vw, 96px)", fontWeight: 800, lineHeight: 0.95, letterSpacing: "-3px", marginBottom: 28, fontFamily: "var(--font-display)" }}>
         <span style={{ display: "block", color: C.text }}>Review.</span>
         <span style={{ display: "block", color: C.text }}>Detect.</span>
-        <span style={{ display: "block", background: `linear-gradient(100deg, ${C.cyan} 0%, ${C.green} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+        <span style={{ display: "block", background: `linear-gradient(100deg, #8aa2b8 0%, #a8c4b0 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
           Ship clean.
         </span>
       </motion.h1>
@@ -322,7 +315,7 @@ function TerminalCard() {
     <div style={{
       background: C.card, border: `1px solid ${C.border}`, borderRadius: 14,
       overflow: "hidden", textAlign: "left",
-      boxShadow: `0 0 0 1px ${C.border}, 0 40px 80px rgba(0,0,0,0.6), 0 0 60px rgba(0,217,255,0.04)`,
+      boxShadow: `0 0 0 1px ${C.border}, 0 40px 80px rgba(0,0,0,0.6), 0 0 40px rgba(138,162,184,0.03)`,
     }}>
       {/* titlebar */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", borderBottom: `1px solid ${C.border}`, background: "#080808" }}>
@@ -518,7 +511,7 @@ function CTASection() {
       <div style={{
         position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
         width: 700, height: 400,
-        background: `radial-gradient(ellipse, ${C.cyanDim} 0%, transparent 65%)`,
+        background: `radial-gradient(ellipse, rgba(138,162,184,0.04) 0%, transparent 65%)`,
         pointerEvents: "none",
       }} />
       <motion.div initial={{ opacity: 0, y: 32 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} style={{ position: "relative" }}>
