@@ -19,7 +19,7 @@
 
 | Dashboard | Scan Results | Monaco with Annotations |
 |-----------|-------------|--------------------------|
-| ![alt text](image.png) | ![alt text](image-1.png) | ![alt text](image-2.png) |
+| ![CodePulse Dashboard](public/image.png) | ![CodePulse Scan Results](public/image-1.png) | ![CodePulse Monaco Annotations](public/image-2.png) |
 
 ---
 
