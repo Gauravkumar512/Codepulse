@@ -19,7 +19,7 @@
 
 | Dashboard | Scan Results | Monaco with Annotations |
 |-----------|-------------|--------------------------|
-| ![dashboard]() | ![results]() | ![monaco]() |
+| ![alt text](image.png) | ![alt text](image-1.png) | ![alt text](image-2.png) |
 
 ---
 
@@ -35,33 +35,92 @@
 
 ## 🗺️ How It Works
 
-```mermaid
-flowchart TD
-  A[User pastes GitHub URL] --> B[POST /api/repo]
-  B --> C[Parse owner/repo and fetch default branch]
-  C --> D[Octokit git tree recursive=1]
-  D --> E[Build nested file tree in UI]
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                           CODEPULSE FLOW                            │
+└─────────────────────────────────────────────────────────────────────┘
 
-  E --> F[Click a file]
-  E --> G[Click Scan Entire Repo]
-
-  F --> H[GET /api/repo/file owner/repo/path/branch]
-  H --> I[Base64 decode GitHub content]
-  I --> J[POST /api/scan mode=file]
-  J --> K[Regex secret scan for selected file]
-  K --> L[Monaco annotations + inline warnings]
-
-  G --> M[POST /api/repo/scan-all]
-  M --> N[Fetch raw files in batches]
-  N --> O[Server-side parallel scanning]
-  O --> P[Stream NDJSON progress fetching/scanning]
-  P --> Q[Results page with severity breakdown]
-
-  L --> R[Run AI review]
-  Q --> R
-  R --> S[POST /api/review]
-  S --> T[Gemini streaming response]
-  T --> U[Review panel renders live output]
+  User pastes GitHub URL
+          │
+          ▼
+  ┌───────────────────┐
+  │ POST /api/repo    │  parse owner/repo from URL
+  │                   │  fetch default branch + git tree
+  └────────┬──────────┘
+           │
+           ▼
+  ┌───────────────────┐
+  │ File Explorer UI  │  Nested sidebar tree
+  │ Renders tree      │  Folders collapse/expand
+  └────────┬──────────┘
+           │
+     ┌─────┴──────────────────────────────┐
+     │                                    │
+     ▼                                    ▼
+┌─────────────────┐              ┌─────────────────────┐
+│ Click a file    │              │ Click "Scan Entire  │
+│                 │              │ Repo" button         │
+└────────┬────────┘              └──────────┬──────────┘
+         │                                  │
+         ▼                                  ▼
+┌─────────────────┐              ┌─────────────────────┐
+│ GET /api/repo/  │              │ POST /api/repo/     │
+│ file            │              │ scan-all            │
+│ (base64 decode) │              │ (streams NDJSON)    │
+└────────┬────────┘              └──────────┬──────────┘
+         │                                  │
+         ▼                                  ▼
+┌─────────────────┐              ┌─────────────────────┐
+│ Monaco Editor   │              │ Results Page        │
+│ shows file      │              │   (fetching/scanning)│
+│ content         │              │ - return files with │
+│                 │              │   secrets + summary │
+└────────┬────────┘              └──────────┬──────────┘
+         │                                  │
+         │                                  ▼
+         │                        ┌─────────────────────┐
+         │                        │ UI updates after    │
+         │                        │ full-repo scan:     │
+         │                        │ - file badges in    │
+         │                        │   explorer          │
+         │                        │ - summary strip     │
+         │                        │ - auto-open first   │
+         │                        │   secret file       │
+         │                        └──────────┬──────────┘
+         │                                   │
+         ▼                                   │
+┌─────────────────┐                          │
+│ After scan, when│◄─────────────────────────┘
+│ opening a file: │
+│ local scanFile  │  apply Monaco secret decorations
+│ runs client-side│  (squiggles + inline notes)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Right panel:    │
+│ "Review <file>" │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ POST /api/review│
+│                 │
+│ Sends file with │
+│ prompt to Gemini│
+└────────┬────────┘
+         │
+         ▼  streaming text response
+┌──────────────────┐
+│ Review Panel     │
+│ - streaming state│
+│   + stop button  │
+│ - Overall summary│
+│ - Suggested      │
+│   actions +      │
+│   copyable fixes │
+│ - clear / retry  │
+└──────────────────┘
 ```
 
 ---
