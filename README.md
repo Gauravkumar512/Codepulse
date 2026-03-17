@@ -1,36 +1,257 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CodePulse 🔍
 
-## Getting Started
+> AI-powered code review and secret detection tool. Paste any GitHub repo URL, get instant security scanning, API leak detection, and streaming AI review — all inside a Monaco editor.
 
-First, run the development server:
+![CodePulse Banner](https://img.shields.io/badge/CodePulse-AI%20Code%20Review-00d9ff?style=for-the-badge)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=for-the-badge&logo=typescript)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47a248?style=for-the-badge&logo=mongodb)
+
+---
+
+<!-- ## 🚀 Live Demo
+
+> **[codepulse.vercel.app](https://codepulse.vercel.app)** ← replace with your deployed URL -->
+
+---
+
+## 📸 Screenshots
+
+| Dashboard | Scan Results | Monaco with Annotations |
+|-----------|-------------|--------------------------|
+| ![dashboard]() | ![results]() | ![monaco]() |
+
+---
+
+## ✨ Features
+
+- **Full Repo Secret Scanner** — Fetches scannable files from a GitHub repo and runs 25+ regex patterns to detect API keys, tokens, passwords, and credentials across the codebase
+- **Inline Monaco Annotations** — Leaked lines get red squiggly underlines + inline fix comments directly in the editor (`🚨 AWS Key — move to process.env.AWS_ACCESS_KEY_ID`)
+- **AI Code Review** — Streaming AI review powered by Gemini. Returns quality scores, line-by-line issues, severity levels, and specific fix suggestions
+- **File Explorer** — Full repo tree with red markers on affected files. Click any file to view in Monaco with secrets highlighted automatically
+- **Auth System** — Email + username signup/signin with JWT, protected routes
+
+---
+
+## 🗺️ How It Works
+
+```mermaid
+flowchart TD
+  A[User pastes GitHub URL] --> B[POST /api/repo]
+  B --> C[Parse owner/repo and fetch default branch]
+  C --> D[Octokit git tree recursive=1]
+  D --> E[Build nested file tree in UI]
+
+  E --> F[Click a file]
+  E --> G[Click Scan Entire Repo]
+
+  F --> H[GET /api/repo/file owner/repo/path/branch]
+  H --> I[Base64 decode GitHub content]
+  I --> J[POST /api/scan mode=file]
+  J --> K[Regex secret scan for selected file]
+  K --> L[Monaco annotations + inline warnings]
+
+  G --> M[POST /api/repo/scan-all]
+  M --> N[Fetch raw files in batches]
+  N --> O[Server-side parallel scanning]
+  O --> P[Stream NDJSON progress fetching/scanning]
+  P --> Q[Results page with severity breakdown]
+
+  L --> R[Run AI review]
+  Q --> R
+  R --> S[POST /api/review]
+  S --> T[Gemini streaming response]
+  T --> U[Review panel renders live output]
+```
+
+---
+
+## 🔐 Secret Scanner — Patterns Detected
+
+| Category | Patterns |
+|----------|----------|
+| **AWS** | Access Key ID, Secret Access Key |
+| **Google** | API Key, OAuth Client Secret |
+| **GitHub** | PAT, OAuth Token, App Token |
+| **Stripe** | Live Secret Key, Publishable Key, Test Keys |
+| **Database** | MongoDB URI, PostgreSQL URL, MySQL URI, Redis URI |
+| **Auth** | JWT Secret (hardcoded), JWT Token values |
+| **Private Keys** | RSA, EC, PGP, OpenSSH, DSA |
+| **Services** | SendGrid, Twilio, Slack Bot Token, Slack Webhook |
+| **Generic** | Hardcoded passwords, API secrets, NPM tokens |
+
+---
+
+## 🏗️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS + inline styles |
+| Animation | Framer Motion |
+| Code Editor | Monaco Editor (`@monaco-editor/react`) |
+| Auth | Custom JWT (`jose`) |
+| Database | MongoDB + Mongoose |
+| GitHub API | Octokit (`@octokit/rest`) |
+| AI Review | Gemini 2.5 Flash (`@google/genai`) |
+| Deployment | Vercel |
+
+---
+
+## 📁 Project Structure
+
+```
+codepulse/
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── auth/
+│   │   │   │   ├── login/route.ts
+│   │   │   │   ├── signup/route.ts
+│   │   │   │   ├── me/route.ts
+│   │   │   │   └── logout/route.ts
+│   │   │   ├── repo/
+│   │   │   │   ├── route.ts          # fetch repo tree
+│   │   │   │   ├── file/route.ts     # fetch file content
+│   │   │   │   └── scan-all/route.ts # full repo scan + NDJSON progress
+│   │   │   ├── scan/route.ts         # single file/repo regex scanner
+│   │   │   └── review/route.ts       # AI review streaming
+│   │   ├── dashboard/page.tsx
+│   │   ├── (auth)/login/page.tsx
+│   │   └── (auth)/signup/page.tsx
+│   ├── components/
+│   │   ├── ReviewPanel.tsx
+│   │   ├── SecretScanPanel.tsx
+│   │   └── ScanResultsPage.tsx
+│   ├── hooks/
+│   │   └── useSecretDecorations.ts
+│   ├── lib/
+│   │   ├── secretScanner.ts
+│   │   ├── dbConfig.ts
+│   │   ├── hash.ts
+│   │   ├── jwt.ts
+│   │   └── session.ts
+│   └── models/
+│       └── user.models.js
+└── src/proxy.ts
+```
+
+---
+
+## ⚙️ Getting Started
+
+### Prerequisites
+
+- Node.js 20+
+- MongoDB Atlas account (free tier works)
+- GitHub account (for token)
+- Google AI Studio account (for Gemini API key)
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/yourusername/codepulse.git
+cd codepulse
+npm install
+```
+
+### 2. Set up environment variables
+
+Create a `.env.local` file in the root:
+
+```env
+# MongoDB
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/codepulse
+
+# JWT
+TOKEN_SECRET=your-super-secret-jwt-key-minimum-32-characters
+
+# GitHub API (optional but strongly recommended — 5000 req/hr vs 60)
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# AI Review
+GEMINI_API_KEY=AIza...                          # required by /api/review
+```
+
+### 3. Run the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Test with a public repo
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Try scanning:
+- `https://github.com/vercel/next.js` — large repo, tests performance
+- `https://github.com/expressjs/express` — medium size
+- Your own repos — to see real results
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🔑 Getting API Keys
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Key | Where to get it | Free tier |
+|-----|-----------------|-----------|
+| `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) | 1,500 req/day |
+| `GITHUB_TOKEN` | [github.com/settings/tokens](https://github.com/settings/tokens) | 5,000 req/hr |
+| `MONGODB_URI` | [cloud.mongodb.com](https://cloud.mongodb.com) | 512MB free |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🚀 Deploy to Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# Install Vercel CLI
+npm i -g vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Deploy
+vercel
+
+# Add environment variables in Vercel dashboard:
+# Settings → Environment Variables → add all from .env.local
+```
+
+Or connect your GitHub repo directly at [vercel.com/new](https://vercel.com/new) for automatic deployments on every push.
+
+---
+
+## 🛣️ Roadmap
+
+- [x] GitHub repo file tree fetching
+- [x] Secret scanner (25+ patterns)
+- [x] Monaco Editor with inline annotations
+- [x] AI code review with streaming
+- [x] Full repo scan with results page
+- [x] JWT authentication
+- [ ] Scan history saved to MongoDB
+- [ ] PDF report export
+- [ ] Private repo support (GitHub OAuth)
+- [ ] VS Code extension
+
+---
+
+## 🤝 Contributing
+
+Pull requests welcome. For major changes please open an issue first.
+
+```bash
+git checkout -b feature/your-feature
+git commit -m "feat: add your feature"
+git push origin feature/your-feature
+```
+
+---
+
+## 📄 License
+
+MIT © [Your Name](https://github.com/yourusername)
+
+---
+
+<div align="center">
+  <p>Built with Next.js · Gemini AI · MongoDB · Monaco Editor</p>
+  <p>If this helped you, give it a ⭐</p>
+</div>
