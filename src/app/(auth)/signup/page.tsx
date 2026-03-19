@@ -59,6 +59,10 @@ function getStrength(pw: string): { score: number; label: string; color: string 
   return { score: s, ...map[s] };
 }
 
+function isGmail(email: string): boolean {
+  return /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email.trim().toLowerCase());
+}
+
 function Field({ label, type, value, onChange, placeholder, autoComplete, error }: {
   label: string; type: string; value: string;
   onChange: (v: string) => void; placeholder: string;
@@ -145,7 +149,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   const pwMismatch = user.confirmPassword.length > 0 && user.password !== user.confirmPassword;
-  const isDisabled = !accepted || !user.username || !user.email || !user.password || !user.confirmPassword || pwMismatch || loading;
+  const gmailError = user.email.length > 0 && !isGmail(user.email)?"Only Gmail addresses are allowed": undefined;
+  const isDisabled = !accepted || !user.username || !user.email || !!gmailError ||!user.password ||!user.confirmPassword || pwMismatch || loading;
 
   const onSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,7 +232,7 @@ export default function SignupPage() {
                 {/* row: username + email */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   <Field label="Username" type="text" autoComplete="username" value={user.username} onChange={v => setUser({ ...user, username: v })} placeholder="johndoe" />
-                  <Field label="Email" type="email" autoComplete="email" value={user.email} onChange={v => setUser({ ...user, email: v })} placeholder="you@example.com" />
+                  <Field label="Email" type="email" autoComplete="email" value={user.email} onChange={v => setUser({ ...user, email: v })} placeholder="you@gmail.com" error={gmailError} />
                 </div>
 
                 {/* password */}
