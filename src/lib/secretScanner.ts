@@ -86,7 +86,6 @@ const SECRET_PATTERNS: {
     fix: "Revoke and regenerate in GitHub App settings",
   },
 
-  /* ── Stripe ── */
   {
     name: "Stripe Secret Key",
     regex: /sk_live_[0-9A-Za-z]{24,}/g,
@@ -109,7 +108,6 @@ const SECRET_PATTERNS: {
     fix: "Move to .env even for test keys",
   },
 
-  /* ── Database ── */
   {
     name: "MongoDB URI",
     regex: /mongodb(?:\+srv)?:\/\/[^\s"'`]+/gi,
@@ -138,8 +136,6 @@ const SECRET_PATTERNS: {
     description: "Redis connection string possibly exposed",
     fix: "Move to REDIS_URL env var",
   },
-
-  /* ── JWT / Secrets ── */
   {
     name: "JWT Secret (hardcoded)",
     regex: /(?:jwt[_-]?secret|JWT_SECRET)\s*[:=]\s*["'`]([^"'`]{8,})["'`]/gi,
@@ -208,7 +204,6 @@ const SECRET_PATTERNS: {
     fix: "Regenerate webhook in Slack app settings",
   },
 
-  /* ── Generic hardcoded secrets ── */
   {
     name: "Hardcoded Password",
     regex: /(?:password|passwd|pwd)\s*[:=]\s*["'`]([^"'`\s]{6,})["'`]/gi,
@@ -232,14 +227,11 @@ const SECRET_PATTERNS: {
   },
 ];
 
-/* ─────────────────────────────────────────
-   SCAN A SINGLE FILE
-───────────────────────────────────────── */
+
 export function scanFile(path: string, content: string): FileScanResult {
   const lines = content.split("\n");
   const matches: SecretMatch[] = [];
 
-  // Skip files that produce false positives
   const skipPaths = [
     ".env.example", ".env.sample", ".env.template",
     "fixture", "mock", "test/data",
@@ -264,8 +256,15 @@ export function scanFile(path: string, content: string): FileScanResult {
         const matchValue = match[0];
 
         // Skip if it looks like a placeholder
-        const placeholders = ["your_", "your-", "their_", "_here", "xxx", "placeholder", "changeme", "replace", "example", "dummy", "<", ">", "..."];
+        const placeholders = [
+          "your_", "your-", "their_", "_here", "xxx", "placeholder", 
+          "changeme", "replace", "example", "dummy", "<", ">", "...",
+          "user:password", "user:pass", "host:port"
+        ];
         if (placeholders.some((p) => matchValue.toLowerCase().includes(p))) continue;
+
+        // Extra check for keys (like RSA) truncated with ... on the same line
+        if (matchValue.includes("BEGIN") && line.substring(match.index).includes("...")) continue;
 
         // Skip comments (lines starting with // or #)
         const trimmed = line.trim();
@@ -287,7 +286,6 @@ export function scanFile(path: string, content: string): FileScanResult {
     }
   }
 
-  // Deduplicate — same line + same pattern
   const seen = new Set<string>();
   const deduped = matches.filter((m) => {
     const key = `${m.line}:${m.pattern}`;
@@ -299,9 +297,6 @@ export function scanFile(path: string, content: string): FileScanResult {
   return { path, matches: deduped, scannedAt: Date.now() };
 }
 
-/* ─────────────────────────────────────────
-   SCAN MULTIPLE FILES
-───────────────────────────────────────── */
 export function scanRepo(files: { path: string; content: string }[]): RepoScanResult {
   const results: FileScanResult[] = [];
   let totalSecrets = 0;
