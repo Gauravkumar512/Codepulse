@@ -3,9 +3,17 @@ import { User } from "@/src/models/user.models";
 import { connect } from "@/src/lib/dbConfig";
 import { hashedPassword } from "@/src/lib/hash";
 import { signJWT } from "@/src/lib/jwt";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
+
 
 /* ── Gmail only ── */
 function isGmail(email: string): boolean {
@@ -14,12 +22,10 @@ function isGmail(email: string): boolean {
 
 /* ── Welcome email ── */
 async function sendWelcomeEmail(email: string, username: string) {
-  await resend.emails.send({
-    from: "CodePulse <onboarding@resend.dev>", // replace with your domain once verified
+  await transporter.sendMail({
+    from: `"CodePulse" <${process.env.GMAIL_USER}>`,
     to: email,
     subject: "Welcome to CodePulse 🔍",
-    // Replace the html field inside sendWelcomeEmail() in your signup/route.ts
-
 html: `
 <!DOCTYPE html>
 <html>

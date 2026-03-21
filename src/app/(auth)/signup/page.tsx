@@ -220,9 +220,6 @@ export default function SignupPage() {
               <h1 style={{ fontFamily: "var(--cp-display)", fontSize: 40, fontWeight: 900, letterSpacing: "-2px", lineHeight: 1, color: "#fff" }}>
                 Create account<span style={{ color: "#8aa2b8" }}>.</span>
               </h1>
-              <p style={{ marginTop: 10, fontSize: 14, color: "#444", fontFamily: "var(--cp-display)", lineHeight: 1.6 }}>
-                Get 3 free scans a day. No credit card needed.
-              </p>
             </div>
 
             {/* card */}
