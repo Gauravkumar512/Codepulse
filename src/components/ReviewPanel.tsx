@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
+import toast from "react-hot-toast";
 
 export type ReviewIssue = {
   description: string;
@@ -78,11 +78,13 @@ function IssueCard({ issue, index }: { issue: ReviewIssue; index: number }) {
 function StreamingIndicator({ raw }: { raw: string }) {
   return (
     <div style={{ padding: "16px", flex: 1, overflowY: "auto" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#8aa2b8", display: "inline-block", animation: "cpulse 1s ease infinite" }} />
-        <span style={{ fontSize: 11, color: "#8aa2b8", fontFamily: "var(--font-mono)", letterSpacing: "1px" }}>
-          AI reviewing your code...
-        </span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#8aa2b8", display: "inline-block", animation: "cpulse 1s ease infinite" }} />
+          <span style={{ fontSize: 11, color: "#8aa2b8", fontFamily: "var(--font-mono)", letterSpacing: "1px" }}>
+            AI reviewing your code...
+          </span>
+        </div>
       </div>
       <div style={{
         background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)",
@@ -208,6 +210,78 @@ export function ReviewPanel({
   filename: string | null;
   hasFile: boolean;
 }) {
+  const [chatInput, setChatInput] = useState("");
+
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    toast("Coming soon...", {
+    style: {
+      background: "#111",
+      color: "#fff",
+      border: "1px solid #111",
+    },
+});
+    setChatInput("");
+  };
+
+  const renderPromptBar = () => {
+    const isStreaming = state === "streaming";
+    return (
+      <div style={{ padding: "0 16px 16px", flexShrink: 0 }}>
+        <form onSubmit={handleChatSubmit} style={{
+          display: "flex", alignItems: "center", background: "#212121",
+          borderRadius: 24, padding: "8px 8px 8px 16px", border: "1px solid rgba(255,255,255,0.08)"
+        }}>
+          <input 
+            type="text" 
+            placeholder="Ask anything" 
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            disabled={isStreaming}
+            style={{
+              flex: 1, background: "transparent", border: "none", outline: "none",
+              color: "#d4d4d4", fontSize: 13, fontFamily: "var(--font-sans)",
+              padding: "0 4px"
+            }}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingRight: 4 }}>
+            {isStreaming ? (
+              <button type="button" onClick={onStop}
+                style={{
+                  width: 32, height: 32, borderRadius: "50%", background: "#444",
+                  border: "none", display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", transition: "background 0.2s", flexShrink: 0
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "#555"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "#444"}
+                title="Stop generating"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="#d4d4d4" stroke="none">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              </button>
+            ) : (
+              <button type="submit" disabled={!chatInput.trim()}
+                style={{
+                  width: 32, height: 32, borderRadius: "50%", background: chatInput.trim() ? "#d4d4d4" : "#333",
+                  border: "none", display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: chatInput.trim() ? "pointer" : "default", transition: "background 0.2s", flexShrink: 0
+                }}
+                title="Send message"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={chatInput.trim() ? "#000" : "#666"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5"></line>
+                  <polyline points="5 12 12 5 19 12"></polyline>
+                </svg>
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+    );
+  };
+
   if (state === "idle") {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 14, padding: "24px", textAlign: "center" }}>
@@ -234,20 +308,7 @@ export function ReviewPanel({
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <StreamingIndicator raw={rawStream} />
-        <div style={{ padding: "0 16px 16px", flexShrink: 0 }}>
-          <button onClick={onStop}
-            style={{
-              width: "100%", padding: "9px 0", borderRadius: 7, border: "1px solid rgba(196,112,126,0.3)",
-              background: "rgba(196,112,126,0.08)", color: "#c4707e", fontSize: 12, fontWeight: 700,
-              fontFamily: "var(--font-mono)", cursor: "pointer", display: "flex", alignItems: "center",
-              justifyContent: "center", gap: 7, transition: "all 0.2s",
-            }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="#c4707e" stroke="none">
-              <rect x="4" y="4" width="16" height="16" rx="2" />
-            </svg>
-            Stop generating
-          </button>
-        </div>
+        {renderPromptBar()}
       </div>
     );
   }
@@ -297,6 +358,8 @@ export function ReviewPanel({
         </div>
 
       </div>
+
+      {renderPromptBar()}
     </motion.div>
   );
 }

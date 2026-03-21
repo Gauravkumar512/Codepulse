@@ -42,23 +42,6 @@ function ParticleBackground() {
   return <canvas ref={ref} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", opacity: .5 }} />;
 }
 
-function getStrength(pw: string): { score: number; label: string; color: string } {
-  if (!pw) return { score: 0, label: "", color: "transparent" };
-  let s = 0;
-  if (pw.length >= 8) s++;
-  if (/[A-Z]/.test(pw)) s++;
-  if (/[0-9]/.test(pw)) s++;
-  if (/[^A-Za-z0-9]/.test(pw)) s++;
-  const map = [
-    { label: "Weak", color: "#c4707e" },
-    { label: "Weak", color: "#c4707e" },
-    { label: "Fair", color: "#b8976a" },
-    { label: "Good", color: "#8aa2b8" },
-    { label: "Strong", color: "#7a9c8e" },
-  ];
-  return { score: s, ...map[s] };
-}
-
 function isGmail(email: string): boolean {
   return /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email.trim().toLowerCase());
 }
@@ -72,7 +55,7 @@ function Field({ label, type, value, onChange, placeholder, autoComplete, error 
   const hasError = !!error;
   return (
     <div>
-      <label style={{ display: "block", fontSize: 10, color: "#444", fontFamily: "var(--cp-mono)", letterSpacing: "2px", textTransform: "uppercase", marginBottom: 8 }}>
+      <label style={{ display: "block", fontSize: 10, color: "#444", fontFamily: "var(--font-sans)", letterSpacing: "2px", textTransform: "uppercase", marginBottom: 8 }}>
         {label}
       </label>
       <input
@@ -86,36 +69,19 @@ function Field({ label, type, value, onChange, placeholder, autoComplete, error 
           background: focused ? "rgba(138,162,184,0.04)" : hasError ? "rgba(196,112,126,0.04)" : "rgba(255,255,255,0.03)",
           border: `1px solid ${hasError ? "rgba(196,112,126,0.4)" : focused ? "rgba(138,162,184,0.35)" : "rgba(255,255,255,0.08)"}`,
           borderRadius: 8, padding: "12px 16px", fontSize: 14, color: "#d4d4d4",
-          outline: "none", fontFamily: "var(--cp-mono)", transition: "all 0.2s",
+          outline: "none", fontFamily: "var(--font-sans)", transition: "all 0.2s",
           boxShadow: focused ? `0 0 0 3px ${hasError ? "rgba(196,112,126,0.06)" : "rgba(138,162,184,0.06)"}` : "none",
         }}
       />
       <AnimatePresence>
         {error && (
           <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-            style={{ fontSize: 11, color: "rgba(196,112,126,0.8)", fontFamily: "var(--cp-mono)", marginTop: 6 }}>
+            style={{ fontSize: 11, color: "rgba(196,112,126,0.8)", fontFamily: "var(--font-sans)", marginTop: 6 }}>
             {error}
           </motion.p>
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-/* ── Strength bar ── */
-function StrengthBar({ password }: { password: string }) {
-  const { score, label, color } = getStrength(password);
-  if (!password) return null;
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: -8 }}>
-      <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
-        {[1, 2, 3, 4].map(i => (
-          <motion.div key={i} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: i * 0.05 }}
-            style={{ flex: 1, height: 2, borderRadius: 2, background: i <= score ? color : "rgba(255,255,255,0.08)", transformOrigin: "left", transition: "background 0.3s" }} />
-        ))}
-      </div>
-      <span style={{ fontSize: 10, color, fontFamily: "var(--cp-mono)", letterSpacing: "1px" }}>{label}</span>
-    </motion.div>
   );
 }
 
@@ -149,8 +115,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   const pwMismatch = user.confirmPassword.length > 0 && user.password !== user.confirmPassword;
-  const gmailError = user.email.length > 0 && !isGmail(user.email)?"Only Gmail addresses are allowed": undefined;
-  const isDisabled = !accepted || !user.username || !user.email || !!gmailError ||!user.password ||!user.confirmPassword || pwMismatch || loading;
+  const gmailError = user.email.length > 0 && !isGmail(user.email) ? "Only Gmail addresses are allowed" : undefined;
+  const isDisabled = !accepted || !user.username || !user.email || !!gmailError || !user.password || !user.confirmPassword || pwMismatch || loading;
 
   const onSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,10 +124,21 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await axios.post("/api/auth/signup", user);
-      toast.success("Account created!");
+      toast.success("Account created!", {
+        style: {
+          background: "#111",
+          color: "#fff",
+          border: "1px solid #111",
+        }
+      });
       router.push("/dashboard");
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Something went wrong");
+      toast.error(err?.response?.data?.error || "Something went wrong" ,{
+      style: {
+      background: "#111",
+      color: "#fff",
+      border: "1px solid #111",
+    }, });
     } finally {
       setLoading(false);
     }
@@ -170,8 +147,6 @@ export default function SignupPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
-        :root { --cp-display:'Cabinet Grotesk',sans-serif; --cp-mono:'JetBrains Mono',monospace; }
         *{box-sizing:border-box;margin:0;padding:0;}
         input::placeholder{color:rgba(255,255,255,0.18);}
         body{background:#000;}
@@ -194,9 +169,9 @@ export default function SignupPage() {
               <path d="M8 14 L12 10 L16 14 L20 10" stroke="#8aa2b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M8 18 L12 14 L16 18 L20 14" stroke="#8aa2b8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity=".4" />
             </svg>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#d4d4d4", fontFamily: "var(--cp-mono)", letterSpacing: "-0.3px" }}>CodePulse</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#d4d4d4", fontFamily: "var(--font-sans)", letterSpacing: "-0.3px" }}>CodePulse</span>
           </Link>
-          <span style={{ fontSize: 12, color: "#444", fontFamily: "var(--cp-mono)" }}>
+          <span style={{ fontSize: 12, color: "#444", fontFamily: "var(--font-sans)" }}>
             Have an account?{" "}
             <Link href="/login" style={{ color: "rgba(138,162,184,0.6)", textDecoration: "none" }}
               onMouseEnter={e => (e.currentTarget.style.color = "#8aa2b8")}
@@ -213,11 +188,11 @@ export default function SignupPage() {
 
             {/* heading */}
             <div style={{ marginBottom: 32 }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(138,162,184,0.07)", border: "1px solid rgba(138,162,184,0.15)", color: "#8aa2b8", padding: "4px 12px", borderRadius: 100, fontSize: 10, fontFamily: "var(--cp-mono)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 18 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(138,162,184,0.07)", border: "1px solid rgba(138,162,184,0.15)", color: "#8aa2b8", padding: "4px 12px", borderRadius: 100, fontSize: 10, fontFamily: "var(--font-sans)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 18 }}>
                 <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#8aa2b8", display: "inline-block" }} />
                 Free to get started
               </div>
-              <h1 style={{ fontFamily: "var(--cp-display)", fontSize: 40, fontWeight: 900, letterSpacing: "-2px", lineHeight: 1, color: "#fff" }}>
+              <h1 style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 900, letterSpacing: "-2px", lineHeight: 1, color: "#fff" }}>
                 Create account<span style={{ color: "#8aa2b8" }}>.</span>
               </h1>
             </div>
@@ -234,7 +209,6 @@ export default function SignupPage() {
 
                 {/* password */}
                 <Field label="Password" type="password" autoComplete="new-password" value={user.password} onChange={v => setUser({ ...user, password: v })} placeholder="Min. 6 characters" />
-                <StrengthBar password={user.password} />
 
                 {/* confirm password */}
                 <Field
@@ -247,7 +221,7 @@ export default function SignupPage() {
                 {/* terms */}
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "4px 0" }}>
                   <Checkbox checked={accepted} onChange={() => setAccepted(p => !p)} />
-                  <p style={{ fontSize: 12, color: "#444", fontFamily: "var(--cp-mono)", lineHeight: 1.6, cursor: "pointer" }} onClick={() => setAccepted(p => !p)}>
+                  <p style={{ fontSize: 12, color: "#444", fontFamily: "var(--font-sans)", lineHeight: 1.6, cursor: "pointer" }} onClick={() => setAccepted(p => !p)}>
                     I agree to the{" "}
                     <a href="/terms" onClick={e => e.stopPropagation()} style={{ color: "rgba(138,162,184,0.5)", textDecoration: "none" }}>Terms</a>
                     {" "}and{" "}
@@ -261,7 +235,7 @@ export default function SignupPage() {
                   whileTap={!isDisabled ? { scale: 0.985 } : {}}
                   style={{
                     marginTop: 4, width: "100%", padding: "13px", borderRadius: 8, border: "none",
-                    fontSize: 14, fontWeight: 700, fontFamily: "var(--cp-mono)", letterSpacing: "0.5px",
+                    fontSize: 14, fontWeight: 700, fontFamily: "var(--font-sans)", letterSpacing: "0.5px",
                     cursor: isDisabled ? "not-allowed" : "pointer", transition: "all 0.2s",
                     background: isDisabled ? "rgba(255,255,255,0.05)" : "#8aa2b8",
                     color: isDisabled ? "rgba(255,255,255,0.2)" : "#000",
@@ -277,7 +251,7 @@ export default function SignupPage() {
               </form>
             </div>
 
-            <p style={{ marginTop: 20, textAlign: "center", fontSize: 12, color: "#333", fontFamily: "var(--cp-mono)" }}>
+            <p style={{ marginTop: 20, textAlign: "center", fontSize: 12, color: "#333", fontFamily: "var(--font-sans)" }}>
               Already have an account?{" "}
               <Link href="/login" style={{ color: "rgba(138,162,184,0.5)", textDecoration: "none" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "#8aa2b8")}
@@ -290,7 +264,7 @@ export default function SignupPage() {
 
         {/* footer */}
         <footer style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "20px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-          <span style={{ fontSize: 11, color: "#222", fontFamily: "var(--cp-mono)" }}>
+          <span style={{ fontSize: 11, color: "#222", fontFamily: "var(--font-sans)" }}>
             Powered by <span style={{ color: "rgba(138,162,184,0.2)" }}>CodePulse</span>
           </span>
         </footer>

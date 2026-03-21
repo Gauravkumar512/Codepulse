@@ -54,7 +54,7 @@ function Field({ label, type, value, onChange, placeholder, autoComplete }: {
   const [focused, setFocused] = useState(false);
   return (
     <div>
-      <label style={{ display: "block", fontSize: 10, color: "#444", fontFamily: "var(--cp-mono)", letterSpacing: "2px", textTransform: "uppercase", marginBottom: 8 }}>
+      <label style={{ display: "block", fontSize: 10, color: "#444", fontFamily: "var(--font-sans)", letterSpacing: "2px", textTransform: "uppercase", marginBottom: 8 }}>
         {label}
       </label>
       <div style={{ position: "relative" }}>
@@ -68,7 +68,7 @@ function Field({ label, type, value, onChange, placeholder, autoComplete }: {
             width: "100%", background: focused ? "rgba(138,162,184,0.04)" : "rgba(255,255,255,0.03)",
             border: `1px solid ${focused ? "rgba(138,162,184,0.35)" : "rgba(255,255,255,0.08)"}`,
             borderRadius: 8, padding: "12px 16px", fontSize: 14, color: "#d4d4d4",
-            outline: "none", fontFamily: "var(--cp-mono)", transition: "all 0.2s",
+            outline: "none", fontFamily: "var(--font-sans)", transition: "all 0.2s",
             boxShadow: focused ? "0 0 0 3px rgba(138,162,184,0.06)" : "none",
           }}
           onMouseEnter={e => { if (!focused) (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.15)"; }}
@@ -90,10 +90,22 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await axios.post("/api/auth/login", user);
-      toast.success("Welcome back!");
+      toast.success("Welcome back!", {
+    style: {
+      background: "#111",
+      color: "#fff",
+      border: "1px solid #111",
+    },
+});
       router.replace("/dashboard");
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Something went wrong");
+      toast.error(err?.response?.data?.error || "Something went wrong", {
+    style: {
+      background: "#111",
+      color: "#fff",
+      border: "1px solid #111",
+    },
+});
     } finally {
       setLoading(false);
     }
@@ -102,11 +114,10 @@ export default function LoginPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
-        :root { --cp-display: 'Cabinet Grotesk', sans-serif; --cp-mono: 'JetBrains Mono', monospace; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         input::placeholder { color: rgba(255,255,255,0.18); }
         body { background: #000; }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
 
       <div style={{ minHeight: "100vh", background: "#000", color: "#d4d4d4", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
@@ -124,9 +135,9 @@ export default function LoginPage() {
               <path d="M8 14 L12 10 L16 14 L20 10" stroke="#8aa2b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M8 18 L12 14 L16 18 L20 14" stroke="#8aa2b8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity=".4" />
             </svg>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#d4d4d4", fontFamily: "var(--cp-mono)", letterSpacing: "-0.3px" }}>CodePulse</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#d4d4d4", fontFamily: "var(--font-sans)", letterSpacing: "-0.3px" }}>CodePulse</span>
           </Link>
-          <span style={{ fontSize: 12, color: "#444", fontFamily: "var(--cp-mono)" }}>
+          <span style={{ fontSize: 12, color: "#444", fontFamily: "var(--font-sans)" }}>
             No account?{" "}
             <Link href="/signup" style={{ color: "rgba(138,162,184,0.6)", textDecoration: "none", transition: "color .2s" }}
               onMouseEnter={e => (e.currentTarget.style.color = "#8aa2b8")}
@@ -143,14 +154,14 @@ export default function LoginPage() {
 
             {/* heading */}
             <div style={{ marginBottom: 36 }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(138,162,184,0.07)", border: "1px solid rgba(138,162,184,0.15)", color: "#8aa2b8", padding: "4px 12px", borderRadius: 100, fontSize: 10, fontFamily: "var(--cp-mono)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 20 }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(138,162,184,0.07)", border: "1px solid rgba(138,162,184,0.15)", color: "#8aa2b8", padding: "4px 12px", borderRadius: 100, fontSize: 10, fontFamily: "var(--font-sans)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 20 }}>
                 <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#8aa2b8", display: "inline-block" }} />
                 Welcome back
               </div>
-              <h1 style={{ fontFamily: "var(--cp-display)", fontSize: 42, fontWeight: 900, letterSpacing: "-2px", lineHeight: 1, color: "#fff" }}>
+              <h1 style={{ fontFamily: "var(--font-display)", fontSize: 42, fontWeight: 900, letterSpacing: "-2px", lineHeight: 1, color: "#fff" }}>
                 Sign in<span style={{ color: "#8aa2b8" }}>.</span>
               </h1>
-              <p style={{ marginTop: 10, fontSize: 14, color: "#444", fontFamily: "var(--cp-display)", lineHeight: 1.6 }}>
+              <p style={{ marginTop: 10, fontSize: 14, color: "#444", fontFamily: "var(--font-sans)", lineHeight: 1.6 }}>
                 Scan your codebase for secrets and quality issues.
               </p>
             </div>
@@ -166,7 +177,7 @@ export default function LoginPage() {
                   whileTap={!isDisabled ? { scale: 0.985 } : {}}
                   style={{
                     marginTop: 4, width: "100%", padding: "13px", borderRadius: 8, border: "none",
-                    fontSize: 14, fontWeight: 700, fontFamily: "var(--cp-mono)", letterSpacing: "0.5px",
+                    fontSize: 14, fontWeight: 700, fontFamily: "var(--font-sans)", letterSpacing: "0.5px",
                     cursor: isDisabled ? "not-allowed" : "pointer", transition: "all 0.2s",
                     background: isDisabled ? "rgba(255,255,255,0.05)" : "#8aa2b8",
                     color: isDisabled ? "rgba(255,255,255,0.2)" : "#000",
@@ -182,7 +193,7 @@ export default function LoginPage() {
               </form>
             </div>
 
-            <p style={{ marginTop: 20, textAlign: "center", fontSize: 12, color: "#333", fontFamily: "var(--cp-mono)" }}>
+            <p style={{ marginTop: 20, textAlign: "center", fontSize: 12, color: "#333", fontFamily: "var(--font-sans)" }}>
               Don't have an account?{" "}
               <Link href="/signup" style={{ color: "rgba(138,162,184,0.5)", textDecoration: "none" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "#8aa2b8")}
@@ -195,12 +206,10 @@ export default function LoginPage() {
 
         {/* footer */}
         <footer style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "20px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-          <span style={{ fontSize: 11, color: "#222", fontFamily: "var(--cp-mono)" }}>
+          <span style={{ fontSize: 11, color: "#222", fontFamily: "var(--font-sans)" }}>
             Powered by <span style={{ color: "rgba(138,162,184,0.2)" }}>CodePulse</span>
           </span>
         </footer>
-
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </>
   );
