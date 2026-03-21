@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ToasterProvider } from "../components/ToasterProvider";
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
   title: "CodePulse",
@@ -17,6 +18,7 @@ export default function RootLayout({
       <body className="antialiased">
       <ToasterProvider/>
         {children}
+        <Analytics/>
       </body>
     </html>
   );
