@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
-import { User } from "@/src/models/user.models";
-import { connect } from "@/src/lib/dbConfig";
 import { verifyJWT } from "@/src/lib/jwt";
 import { getSessionCookie } from "@/src/lib/session";
 
 export async function GET() {
   try {
-    await connect();
-
     const token = await getSessionCookie();
 
     if (!token) {
@@ -26,17 +22,15 @@ export async function GET() {
       );
     }
 
-    const user = await User.findById(payload.id).select("-password");
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
-
     return NextResponse.json(
-      { success: true, user },
+      {
+        success: true,
+        user: {
+          id: payload.id,
+          email: payload.email,
+          username: payload.username ?? null,
+        },
+      },
       { status: 200 }
     );
   } catch (error: any) {

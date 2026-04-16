@@ -26,6 +26,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!user.password) {
+      return NextResponse.json(
+        { error: "This account uses Google or GitHub sign-in" },
+        { status: 401 }
+      );
+    }
+
     const isPasswordCorrect = await comparePassword(password, user.password);
 
     if (!isPasswordCorrect) {
@@ -35,7 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = await signJWT({ id: user._id.toString(), email: user.email });
+    const token = await signJWT({ id: user._id.toString(), email: user.email, username: user.username });
 
     const response = NextResponse.json(
       { message: "Login successfully", success: true },
