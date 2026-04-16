@@ -1,28 +1,32 @@
 import mongoose from "mongoose";
 
-export async function connect(){
-    
-    const MONGO_DB_URL = process.env.DB_CONFIG
+let isConnected = false;
 
-    if(!MONGO_DB_URL){
-        throw new Error("Please define the MONGODB_URI environment variable");
-    }
+export async function connect() {
+  if (isConnected) return;
 
-    try {
-        await mongoose.connect(MONGO_DB_URL)
-        const connection = mongoose.connection
+  const MONGO_DB_URL = process.env.DB_CONFIG;
 
-        connection.on('connected', ()=>{
-            console.log("DB conencted")
-        })
+  if (!MONGO_DB_URL) {
+    throw new Error("Please define the DB_CONFIG environment variable");
+  }
 
-        connection.on('error',(err: any)=>{
-            console.log(err)
-        })
+  try {
+    await mongoose.connect(MONGO_DB_URL);
+    isConnected = true;
+    console.log("DB connected");
 
-        
-    } catch (error) {
-        console.log("Something went wrong",error)
-        throw error
-    }
+    mongoose.connection.on("error", (err) => {
+      console.error("MongoDB connection error:", err);
+      isConnected = false;
+    });
+
+    mongoose.connection.on("disconnected", () => {
+      console.warn("MongoDB disconnected");
+      isConnected = false;
+    });
+  } catch (error) {
+    console.error("Something went wrong connecting to MongoDB:", error);
+    throw error;
+  }
 }

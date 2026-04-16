@@ -5,6 +5,7 @@ const getSecret = () => new TextEncoder().encode(process.env.TOKEN_SECRET!);
 export interface JWTPayload extends JoseJWTPayload {
   id: string;
   email: string;
+  username?: string;
 }
 
 export async function signJWT(payload: JWTPayload): Promise<string> {
