@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("signup route error:", error);
+    return NextResponse.json({ error: "Signup failed" }, { status: 500 });
   }
 }

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Octokit } from "@octokit/rest";
 
-const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
-});
+const octokit = new Octokit();
 
 export async function GET(req: NextRequest) {
   try {
@@ -40,6 +38,7 @@ export async function GET(req: NextRequest) {
     if (err.status === 404) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
-    return NextResponse.json({ error: err.message || "Failed to fetch file" }, { status: 500 });
+    console.error("repo file route error:", err);
+    return NextResponse.json({ error: "Failed to fetch file" }, { status: 500 });
   }
 }

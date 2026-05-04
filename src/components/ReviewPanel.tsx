@@ -291,13 +291,13 @@ export function ReviewPanel({
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#444", fontFamily: "var(--font-display)", marginBottom: 4 }}>AI Review</div>
           <div style={{ fontSize: 12, color: "#2a2a2a", fontFamily: "var(--font-mono)", lineHeight: 1.7 }}>
-            {hasFile ? `Select a file and click\n"Run AI review →"` : "Load a repo and select a file first"}
+            {hasFile ? `Select a file and click\n"Run AI review"` : "Load a repo and select a file first"}
           </div>
         </div>
         {hasFile && filename && (
           <button onClick={onRun}
             style={{ marginTop: 8, padding: "9px 22px", background: "#8aa2b8", color: "#000", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 700, fontFamily: "var(--font-mono)", cursor: "pointer", boxShadow: "0 0 16px rgba(138,162,184,0.2)" }}>
-            Review {filename} →
+            Review {filename}
           </button>
         )}
       </div>

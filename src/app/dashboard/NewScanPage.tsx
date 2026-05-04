@@ -136,7 +136,7 @@ function UrlBar({ onSubmit, loading }: { onSubmit:(url:string)=>void; loading:bo
         style={{ flex:1,padding:"8px 13px",background:focused?"rgba(138,162,184,0.04)":"rgba(255,255,255,0.03)",border:`1px solid ${focused?"rgba(138,162,184,0.28)":"rgba(255,255,255,0.08)"}`,borderRadius:7,fontSize:13,color:"#d4d4d4",outline:"none",fontFamily:"var(--font-mono)",transition:"all .2s" }}/>
       <button type="submit" disabled={!url.trim()||loading}
         style={{ padding:"8px 18px",borderRadius:7,border:"none",flexShrink:0,background:url.trim()&&!loading?"#8aa2b8":"rgba(255,255,255,0.05)",color:url.trim()&&!loading?"#000":"#333",fontSize:12,fontWeight:700,fontFamily:"var(--font-mono)",cursor:url.trim()&&!loading?"pointer":"not-allowed",transition:"all .2s",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap" }}>
-        {loading?<><span style={{width:11,height:11,border:"2px solid rgba(0,0,0,0.3)",borderTop:"2px solid #000",borderRadius:"50%",display:"inline-block",animation:"cpspin .7s linear infinite"}}/>Fetching...</>:"Fetch repo →"}
+        {loading?<><span style={{width:11,height:11,border:"2px solid rgba(0,0,0,0.3)",borderTop:"2px solid #000",borderRadius:"50%",display:"inline-block",animation:"cpspin .7s linear infinite"}}/>Fetching...</>:"Fetch repo"}
       </button>
     </form>
   );

@@ -148,7 +148,7 @@ export function SecretScanPanel({
             style={{ marginTop: 4, padding: "9px 20px", background: "rgba(196,112,126,0.12)", color: "#c4707e", border: "1px solid rgba(196,112,126,0.25)", borderRadius: 7, fontSize: 12, fontWeight: 700, fontFamily: "var(--cp-mono)", cursor: "pointer", transition: "all 0.2s" }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(196,112,126,0.2)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(196,112,126,0.12)"; }}>
-            Scan {filename} →
+            Scan {filename}
           </button>
         )}
       </div>

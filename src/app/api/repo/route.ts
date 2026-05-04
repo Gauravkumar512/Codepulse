@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Octokit } from "@octokit/rest";
 
-const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
-});
+const octokit = new Octokit();
 
 function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
   try {
@@ -112,8 +110,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Repo not found or is private" }, { status: 404 });
     }
     if (err.status === 403) {
-      return NextResponse.json({ error: "GitHub API rate limit hit. Add GITHUB_TOKEN to .env" }, { status: 403 });
+      return NextResponse.json({ error: "GitHub API rate limit hit" }, { status: 403 });
     }
-    return NextResponse.json({ error: err.message || "Failed to fetch repo" }, { status: 500 });
+    console.error("repo route error:", err);
+    return NextResponse.json({ error: "Failed to fetch repo" }, { status: 500 });
   }
 }

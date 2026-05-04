@@ -56,7 +56,6 @@ export async function POST(req: NextRequest) {
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
-    console.log("[review] API key present:", !!apiKey, "length:", apiKey?.length ?? 0);
 
     if (!apiKey) {
       return new Response(
@@ -106,7 +105,7 @@ export async function POST(req: NextRequest) {
 
     return new Response(
       JSON.stringify({
-        error: err.message || "Failed to generate review",
+        error: "Failed to generate review",
       }),
       {
         status: 500,

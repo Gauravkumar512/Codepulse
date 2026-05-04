@@ -319,7 +319,7 @@ export default function SignupPage() {
                       <span style={{ width: 14, height: 14, border: "2px solid rgba(0,0,0,0.3)", borderTop: "2px solid #000", borderRadius: "50%", display: "inline-block", animation: "spin .7s linear infinite" }} />
                       Creating account...
                     </span>
-                    : "Create account →"}
+                    : "Create account"}
                 </motion.button>
               </form>
 

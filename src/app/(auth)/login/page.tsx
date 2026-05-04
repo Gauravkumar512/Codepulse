@@ -256,7 +256,7 @@ export default function LoginPage() {
                         <span style={{ width: 14, height: 14, border: "2px solid rgba(0,0,0,0.3)", borderTop: "2px solid #000", borderRadius: "50%", display: "inline-block", animation: "spin .7s linear infinite" }} />
                         Signing in...
                       </span>
-                    : "Sign in →"}
+                    : "Sign in"}
                 </motion.button>
               </form>
 

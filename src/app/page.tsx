@@ -230,7 +230,7 @@ function GlowButton({ href, children, small, outline }: { href: string; children
         transform: hov ? "translateY(-1px)" : "translateY(0)",
       }}>
       {children}
-      <span style={{ fontSize: small ? 12 : 14 }}>→</span>
+      <span style={{ fontSize: small ? 12 : 14 }} />
     </Link>
   );
 }

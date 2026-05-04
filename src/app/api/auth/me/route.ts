@@ -1,23 +1,38 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { verifyJWT } from "@/src/lib/jwt";
 import { getSessionCookie } from "@/src/lib/session";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const token = await getSessionCookie();
 
-    if (!token) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+    if (token) {
+      const payload = await verifyJWT(token);
+
+      if (payload) {
+        return NextResponse.json(
+          {
+            success: true,
+            user: {
+              id: payload.id,
+              email: payload.email,
+              username: payload.username ?? null,
+            },
+          },
+          { status: 200 }
+        );
+      }
     }
 
-    const payload = await verifyJWT(token);
+    const nextAuthToken = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET!,
+    });
 
-    if (!payload) {
+    if (!nextAuthToken?.email || !nextAuthToken?.mongoId) {
       return NextResponse.json(
-        { error: "Invalid or expired token" },
+        { error: "Not authenticated" },
         { status: 401 }
       );
     }
@@ -26,14 +41,15 @@ export async function GET() {
       {
         success: true,
         user: {
-          id: payload.id,
-          email: payload.email,
-          username: payload.username ?? null,
+          id: nextAuthToken.mongoId as string,
+          email: nextAuthToken.email as string,
+          username: (nextAuthToken.dbUsername as string) ?? null,
         },
       },
       { status: 200 }
     );
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("me route error:", error);
+    return NextResponse.json({ error: "Failed to load session" }, { status: 500 });
   }
 }

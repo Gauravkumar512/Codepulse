@@ -3,6 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import { signOut } from "next-auth/react";
 import NewScanPage from "./NewScanPage";
 
 const Icons = {
@@ -43,9 +44,10 @@ function Topbar() {
   const handleLogout = async () => {
     try {
       await axios.post("/api/auth/logout");
-      router.push("/");
+      await signOut({ callbackUrl: "/" });
     } catch (error) {
       console.error("Logout failed:", error);
+      router.push("/");
     }
   };
 

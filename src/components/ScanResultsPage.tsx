@@ -271,7 +271,7 @@ function FileCard({ result, content, index, onAiReview }: {
           style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid rgba(138,162,184,0.2)", background: "rgba(138,162,184,0.06)", color: "#8aa2b8", fontSize: 11, fontFamily: "var(--cp-mono)", cursor: "pointer", flexShrink: 0, transition: "all 0.2s", whiteSpace: "nowrap" }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(138,162,184,0.12)"; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(138,162,184,0.06)"; }}>
-          AI review →
+          AI review
         </button>
 
         {/* Chevron */}

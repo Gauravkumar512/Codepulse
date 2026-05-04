@@ -78,7 +78,7 @@ html: `
                 <td style="background:#0a0a0a;border-radius:8px;">
                   <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard"
                     style="display:inline-block;padding:13px 28px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:0.2px;font-family:monospace;">
-                    Start scanning →
+                    Start scanning
                   </a>
                 </td>
               </tr>

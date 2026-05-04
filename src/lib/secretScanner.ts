@@ -24,6 +24,14 @@ export type RepoScanResult = {
   files: FileScanResult[];
 };
 
+function redactSecretValue(value: string): string {
+  if (value.length <= 8) {
+    return "[redacted]";
+  }
+
+  return `${value.slice(0, 4)}…${value.slice(-4)}`;
+}
+
 const SECRET_PATTERNS: {
   name: string;
   regex: RegExp;
@@ -274,7 +282,9 @@ export function scanFile(path: string, content: string): FileScanResult {
           line: lineIdx + 1,
           column: match.index + 1,
           pattern: pattern.name,
-          match: matchValue.length > 60 ? matchValue.slice(0, 57) + "..." : matchValue,
+          match: redactSecretValue(
+            matchValue.length > 60 ? `${matchValue.slice(0, 57)}...` : matchValue
+          ),
           severity: pattern.severity,
           description: pattern.description,
           fix: pattern.fix,

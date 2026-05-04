@@ -52,9 +52,6 @@ async function fetchRaw(owner: string, repo: string, branch: string, path: strin
   try {
     const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
     const res = await fetch(url, {
-      headers: process.env.GITHUB_TOKEN
-        ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
-        : {},
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return null;
@@ -172,7 +169,7 @@ export async function POST(req: NextRequest) {
           controller.close();
         } catch (err: any) {
           controller.enqueue(encoder.encode(
-            JSON.stringify({ type: "error", error: err.message || "Scan failed" }) + "\n"
+            JSON.stringify({ type: "error", error: "Scan failed" }) + "\n"
           ));
           controller.close();
         }
@@ -188,7 +185,7 @@ export async function POST(req: NextRequest) {
 
   } catch (err: any) {
     console.error("scan-all error:", err);
-    return new Response(JSON.stringify({ error: err.message || "Scan failed" }), {
+    return new Response(JSON.stringify({ error: "Scan failed" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
