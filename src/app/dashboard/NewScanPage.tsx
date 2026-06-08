@@ -1,16 +1,21 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import axios from "axios";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { ReviewPanel, useReview } from "@/src/components/ReviewPanel";
+import { ChatTray, useFileChat } from "@/src/components/ChatTray";
+import { DependencyPanel, useDependencyScan } from "@/src/components/DependencyPanel";
 import { useSecretDecorations, injectSecretStyles } from "@/src/hooks/useSecretDecorations";
-import { scanFile } from "@/src/lib/secretScanner";
+import { useIgnoredSecrets, secretKey } from "@/src/context/IgnoredSecretsContext";
+import { scanFile, maskSecretsInContent } from "@/src/lib/secretScanner";
 import type { FileNode } from "../api/repo/route";
-import type { SecretMatch } from "@/src/lib/secretScanner";
+import type { SecretMatch, FileScanResult } from "@/src/lib/secretScanner";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
+
+const EMPTY_PATHS: Set<string> = new Set();
 
 type RepoMeta = { owner: string; repo: string; branch: string; totalFiles: number };
 
@@ -261,18 +266,87 @@ export default function NewScanPage() {
   const [selectedFile, setSelectedFile]   = useState<FileNode | null>(null);
   const [fileContent, setFileContent]     = useState<string | null>(null);
   const [fileSecrets, setFileSecrets]     = useState<SecretMatch[]>([]);
-  const [secretPaths, setSecretPaths]     = useState<Set<string>>(new Set());
-  const [secretFilesList, setSecretFilesList] = useState<FileNode[]>([]);
+  const [repoResults, setRepoResults]     = useState<FileScanResult[]>([]);
+  const [scanMeta, setScanMeta]           = useState<{ scannedFiles:number; totalFiles:number } | null>(null);
   const [repoLoading, setRepoLoading]     = useState(false);
   const [fileLoading, setFileLoading]     = useState(false);
   const [scanning, setScanning]           = useState(false);
   const [scanProgress, setScanProgress]   = useState({ phase:"fetching", current:0, total:0 });
   const [fetchError, setFetchError]       = useState<string | null>(null);
-  const [scanSummary, setScanSummary]     = useState<{ totalSecrets:number; critical:number; high:number; medium:number; scannedFiles:number; cleanFiles:number } | null>(null);
   const [reviewWidth, setReviewWidth]     = useState(380);
+  const [revealed, setRevealed]           = useState(false);
+  const [reviewOpen, setReviewOpen]       = useState(false);
 
   const review     = useReview();
+  const deps       = useDependencyScan();
+  const chat       = useFileChat();
+  const [chatOpen, setChatOpen] = useState(false);
   const { applyDecorations, clearDecorations } = useSecretDecorations();
+  const { ignored, getIgnored, ignoreKeys } = useIgnoredSecrets();
+
+  const ignoredList = selectedFile ? getIgnored(selectedFile.path) : [];
+  const ignoredSig  = ignoredList.join("|");
+  const overridden  = ignoredList.length > 0; // file has been marked safe
+  const activeSecrets = useMemo(() => {
+    const set = new Set(ignoredList);
+    return fileSecrets.filter((m) => !set.has(secretKey(m)));
+  }, [fileSecrets, ignoredSig]);
+
+  const liveScan = useMemo(() => {
+    if (!scanMeta) return null;
+    let totalSecrets = 0, critical = 0, high = 0, medium = 0;
+    const activePaths = new Set<string>();
+    for (const r of repoResults) {
+      const set = new Set(ignored[r.path] ?? []);
+      const active = r.matches.filter((m) => !set.has(secretKey(m)));
+      if (active.length === 0) continue;
+      activePaths.add(r.path);
+      totalSecrets += active.length;
+      for (const m of active) {
+        if (m.severity === "critical") critical++;
+        else if (m.severity === "high") high++;
+        else medium++;
+      }
+    }
+    return {
+      totalSecrets, critical, high, medium,
+      scannedFiles: scanMeta.scannedFiles,
+      cleanFiles: scanMeta.scannedFiles - activePaths.size,
+      activePaths,
+    };
+  }, [repoResults, scanMeta, ignored]);
+
+  const secretPaths = liveScan?.activePaths ?? EMPTY_PATHS;
+  const secretFilesList = useMemo(() => {
+    if (!liveScan || liveScan.activePaths.size === 0) return [] as FileNode[];
+    const nodes: FileNode[] = [];
+    const walk = (ns: FileNode[]) => {
+      for (const n of ns) {
+        if (n.type === "file" && liveScan.activePaths.has(n.path)) nodes.push(n);
+        if (n.children) walk(n.children);
+      }
+    };
+    walk(fileTree);
+    return nodes;
+  }, [liveScan, fileTree]);
+
+  // mark every current finding in this file as safe (persisted to the record)
+  const markFileSafe = useCallback(() => {
+    if (!selectedFile) return;
+    const keys = Array.from(
+      new Set([...fileSecrets, ...review.blockedSecrets].map(secretKey))
+    );
+    ignoreKeys(selectedFile.path, keys);
+  }, [selectedFile, fileSecrets, review.blockedSecrets, ignoreKeys]);
+
+  const sendChat = useCallback((text: string) => {
+    setChatOpen(true);
+    chat.send(text, {
+      filename: selectedFile?.path ?? null,
+      code: fileContent,
+      review: review.result,
+    });
+  }, [chat, selectedFile, fileContent, review.result]);
   const hasScannedRef = useRef(false);
 
   const editorRef = useRef<any>(null);
@@ -282,21 +356,42 @@ export default function NewScanPage() {
   useEffect(() => { injectSecretStyles(); }, []);
 
   useEffect(() => {
+    if (review.state === "blocked" && review.blockedSecrets.length > 0) {
+      setFileSecrets(review.blockedSecrets);
+      setRevealed(false);
+      setReviewOpen(true);
+    }
+  }, [review.state, review.blockedSecrets]);
+
+  const displayedContent = useMemo(() => {
+    if (fileContent === null) return null;
+    if (revealed || activeSecrets.length === 0) return fileContent;
+    return maskSecretsInContent(fileContent, activeSecrets);
+  }, [fileContent, activeSecrets, revealed]);
+
+  const handleIgnore = useCallback(() => {
+    markFileSafe();
+    if (selectedFile && fileContent) {
+      review.runReview(selectedFile.name, fileContent, { override: true });
+    }
+  }, [markFileSafe, selectedFile, fileContent, review]);
+
+  useEffect(() => {
     if (editorRef.current && monacoRef.current) {
-      if (fileSecrets.length > 0) {
-        applyDecorations(editorRef.current, monacoRef.current, fileSecrets);
+      if (activeSecrets.length > 0) {
+        applyDecorations(editorRef.current, monacoRef.current, activeSecrets);
       } else {
         clearDecorations(editorRef.current);
       }
     }
-  }, [fileSecrets, applyDecorations, clearDecorations]);
+  }, [activeSecrets, revealed, displayedContent, applyDecorations, clearDecorations]);
 
   const handleFetchRepo = useCallback(async (url: string) => {
     setRepoLoading(true); setFetchError(null);
     setFileTree([]); setSelectedFile(null); setFileContent(null);
-    setRepoMeta(null); setScanSummary(null);
+    setRepoMeta(null); setScanMeta(null); setRepoResults([]);
     hasScannedRef.current = false;
-    setSecretPaths(new Set()); setFileSecrets([]); setSecretFilesList([]);
+    setFileSecrets([]);
     review.reset();
     try {
       const { data } = await axios.post("/api/repo", { url });
@@ -312,8 +407,9 @@ export default function NewScanPage() {
   const handleSelectFile = useCallback(async (node: FileNode) => {
     if (node.type === "dir" || !repoMeta) return;
     setSelectedFile(node); setFileContent(null);
-    setFileSecrets([]); setFileLoading(true);
+    setFileSecrets([]); setFileLoading(true); setRevealed(false);
     review.reset();
+    chat.reset(); setChatOpen(false);
     try {
       const { data } = await axios.get("/api/repo/file", {
         params: { owner:repoMeta.owner, repo:repoMeta.repo, path:node.path, branch:repoMeta.branch },
@@ -331,7 +427,7 @@ export default function NewScanPage() {
     } finally {
       setFileLoading(false);
     }
-  }, [repoMeta, review]);
+  }, [repoMeta, review, chat]);
 
   const handleScanRepo = useCallback(async () => {
     if (!repoMeta || !fileTree.length) return;
@@ -379,9 +475,16 @@ export default function NewScanPage() {
       }
 
       if (finalData) {
-        // Collect actual nodes from the tree matching the secret paths
-        const paths = new Set<string>(finalData.results.map((r: any) => r.path));
-        
+        const results: FileScanResult[] = finalData.results ?? [];
+        setRepoResults(results);
+        setScanMeta({ scannedFiles: finalData.scannedFiles, totalFiles: finalData.totalFiles });
+        hasScannedRef.current = true;
+
+        const paths = new Set<string>(
+          results
+            .filter((r) => r.matches.some((m) => !(ignored[r.path] ?? []).includes(secretKey(m))))
+            .map((r) => r.path)
+        );
         const fileNodes: FileNode[] = [];
         const findNodes = (nodes: FileNode[]) => {
           for (const n of nodes) {
@@ -390,20 +493,7 @@ export default function NewScanPage() {
           }
         };
         findNodes(fileTree);
-        
-        setSecretFilesList(fileNodes);
-        setSecretPaths(paths);
-        hasScannedRef.current = true;
-        setScanSummary({
-          totalSecrets: finalData.totalSecrets,
-          critical: finalData.critical,
-          high: finalData.high,
-          medium: finalData.medium,
-          scannedFiles: finalData.scannedFiles,
-          cleanFiles: finalData.cleanFiles,
-        });
 
-        // if no file selected or current file isn't a secret, fast-jump to the first secret file
         if (fileNodes.length > 0) {
           if (!selectedFile || !paths.has(selectedFile.path)) {
             handleSelectFile(fileNodes[0]);
@@ -418,15 +508,15 @@ export default function NewScanPage() {
     } finally {
       setScanning(false);
     }
-  }, [repoMeta, fileTree, selectedFile, fileContent]);
+  }, [repoMeta, fileTree, selectedFile, fileContent, ignored]);
 
   const handleEditorMount = useCallback((editor: any, monaco: any) => {
     editorRef.current  = editor;
     monacoRef.current  = monaco;
-    if (fileSecrets.length > 0) {
-      applyDecorations(editor, monaco, fileSecrets);
+    if (activeSecrets.length > 0) {
+      applyDecorations(editor, monaco, activeSecrets);
     }
-  }, [fileSecrets, applyDecorations]);
+  }, [activeSecrets, applyDecorations]);
 
   return (
     <>
@@ -460,14 +550,23 @@ export default function NewScanPage() {
               <span style={{ fontSize:11,color:"#444",fontFamily:"var(--font-mono)" }}>branch: {repoMeta.branch}</span>
               <span style={{ fontSize:11,color:"#444",fontFamily:"var(--font-mono)" }}>{repoMeta.totalFiles} files</span>
               <div style={{ marginLeft:"auto",display:"flex",gap:8,alignItems:"center" }}>
-                {/* Scan entire repo button */}
+                {/* Check dependencies button */}
+                <button onClick={()=>{ if(repoMeta) deps.run(repoMeta.owner,repoMeta.repo,repoMeta.branch,fileTree); }}
+                  disabled={deps.state==="loading"||scanning}
+                  style={{ padding:"5px 16px",borderRadius:6,border:"1px solid rgba(138,162,184,0.3)",background:"rgba(138,162,184,0.08)",color:"#8aa2b8",fontSize:11,fontWeight:700,fontFamily:"var(--font-mono)",cursor:(deps.state==="loading"||scanning)?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .2s",opacity:(deps.state==="loading"||scanning)?0.6:1 }}
+                  onMouseEnter={e=>{ if(deps.state!=="loading"&&!scanning)(e.currentTarget as HTMLElement).style.background="rgba(138,162,184,0.15)"; }}
+                  onMouseLeave={e=>{ (e.currentTarget as HTMLElement).style.background="rgba(138,162,184,0.08)"; }}>
+                  {deps.state==="loading"
+                    ? <><span style={{width:10,height:10,border:"1.5px solid rgba(138,162,184,0.3)",borderTop:"1.5px solid #8aa2b8",borderRadius:"50%",display:"inline-block",animation:"cpspin .7s linear infinite"}}/>Checking...</>
+                    : <>Check dependencies</>}
+                </button>
                 <button onClick={handleScanRepo} disabled={scanning}
                   style={{ padding:"5px 16px",borderRadius:6,border:"1px solid rgba(196,112,126,0.35)",background:"rgba(196,112,126,0.1)",color:"#c4707e",fontSize:11,fontWeight:700,fontFamily:"var(--font-mono)",cursor:scanning?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .2s" }}
                   onMouseEnter={e=>{ if(!scanning)(e.currentTarget as HTMLElement).style.background="rgba(196,112,126,0.18)"; }}
                   onMouseLeave={e=>{ (e.currentTarget as HTMLElement).style.background="rgba(196,112,126,0.1)"; }}>
                   {scanning
                     ? <><span style={{width:10,height:10,border:"1.5px solid rgba(196,112,126,0.3)",borderTop:"1.5px solid #c4707e",borderRadius:"50%",display:"inline-block",animation:"cpspin .7s linear infinite"}}/>Scanning...</>
-                    : <>🔍 Scan entire repo</>}
+                    : <>Scan</>}
                 </button>
               </div>
             </motion.div>
@@ -475,9 +574,9 @@ export default function NewScanPage() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {scanSummary && (
+          {liveScan && (
           <ScanSummaryStrip
-            data={scanSummary}
+            data={liveScan}
             selectedIdx={selectedFile ? secretFilesList.findIndex(f => f.path === selectedFile.path) : -1}
             totalSecretFiles={secretFilesList.length}
             onPrev={() => {
@@ -489,10 +588,9 @@ export default function NewScanPage() {
               if (idx >= 0 && idx < secretFilesList.length - 1) handleSelectFile(secretFilesList[idx + 1]);
             }}
             onClear={() => {
-              setScanSummary(null);
+              setScanMeta(null);
+              setRepoResults([]);
               hasScannedRef.current = false;
-              setSecretPaths(new Set());
-              setSecretFilesList([]);
               if (selectedFile) setFileSecrets([]);
             }}
           />
@@ -508,6 +606,26 @@ export default function NewScanPage() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          <DependencyPanel
+            state={deps.state}
+            result={deps.result}
+            error={deps.error}
+            onClose={deps.reset}
+            onRetry={()=>{ if(repoMeta) deps.run(repoMeta.owner,repoMeta.repo,repoMeta.branch,fileTree); }}
+          />
+
+          <ChatTray
+            open={chatOpen}
+            messages={chat.messages}
+            streaming={chat.streaming}
+            error={chat.error}
+            filename={selectedFile?.path ?? null}
+            onSend={sendChat}
+            onStop={chat.stop}
+            onClose={()=>setChatOpen(false)}
+            onClear={chat.reset}
+          />
 
           <div style={{ width:220,flexShrink:0,borderRight:"1px solid rgba(255,255,255,0.05)",overflowY:"auto",background:"#060606" }}>
             {!repoMeta ? (
@@ -528,14 +646,33 @@ export default function NewScanPage() {
             )}
           </div>
 
-          {/* Monaco editor */}
           <div style={{ flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:"#050505",minWidth:0 }}>
             {selectedFile && repoMeta && (
               <Breadcrumb
                 path={selectedFile.path}
                 repo={`${repoMeta.owner}/${repoMeta.repo}`}
-                secretCount={fileSecrets.length}
+                secretCount={activeSecrets.length}
               />
+            )}
+            {activeSecrets.length > 0 && fileContent !== null && (
+              <div style={{ display:"flex",alignItems:"center",gap:8,padding:"6px 14px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"rgba(196,112,126,0.04)",flexShrink:0 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c4707e" strokeWidth="2" strokeLinecap="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span style={{ fontSize:11,color:"#c4707e",fontFamily:"var(--font-mono)" }}>
+                  {revealed
+                    ? "Secret values visible"
+                    : `${activeSecrets.length} secret value${activeSecrets.length>1?"s":""} hidden`}
+                </span>
+                <button onClick={()=>setRevealed(r=>!r)}
+                  style={{ marginLeft:"auto",background:"transparent",border:"1px solid rgba(196,112,126,0.3)",color:"#c4707e",padding:"3px 12px",borderRadius:5,fontSize:10,fontFamily:"var(--font-mono)",cursor:"pointer" }}>
+                  {revealed ? "Hide" : "Reveal"}
+                </button>
+                <button onClick={markFileSafe} title="Mark these findings as false positives — unmask & dismiss (persists across navigation)"
+                  style={{ background:"rgba(184,151,106,0.12)",border:"1px solid rgba(184,151,106,0.3)",color:"#b8976a",padding:"3px 12px",borderRadius:5,fontSize:10,fontWeight:700,fontFamily:"var(--font-mono)",cursor:"pointer" }}>
+                  ✓ Ignore / Mark safe
+                </button>
+              </div>
             )}
             {fileLoading ? (
               <Placeholder icon="⟳" title="Loading file..." sub="Fetching from GitHub API"/>
@@ -544,7 +681,7 @@ export default function NewScanPage() {
                 <MonacoEditor
                   height="100%"
                   language={detectLanguage(selectedFile.name)}
-                  value={fileContent}
+                  value={displayedContent ?? ""}
                   theme="vs-dark"
                   options={{
                     readOnly:true, fontSize:13,
@@ -557,6 +694,7 @@ export default function NewScanPage() {
                     wordWrap:"on",
                     padding:{ top:14,bottom:14 },
                     smoothScrolling:true,
+                    automaticLayout:true,
                     scrollbar:{ verticalScrollbarSize:3,horizontalScrollbarSize:3 },
                   }}
                   onMount={handleEditorMount}
@@ -571,44 +709,85 @@ export default function NewScanPage() {
             )}
           </div>
 
-          {/* AI Review panel */}
-          <div style={{ width: reviewWidth, flexShrink:0, borderLeft:"1px solid rgba(255,255,255,0.05)", background:"#060606", position:"relative", display:"flex", flexDirection:"column" }}>
-            {/* Drag Handle */}
-            <div
-              style={{
-                position: "absolute", left: -4, top: 0, bottom: 0, width: 8,
-                cursor: "col-resize", zIndex: 10,
-                background: "transparent",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(138,162,184,0.2)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                const startX = e.clientX;
-                const startW = reviewWidth;
-                const onMouseMove = (moveE: MouseEvent) => {
-                  const delta = startX - moveE.clientX;
-                  setReviewWidth(Math.max(250, Math.min(1000, startW + delta)));
-                };
-                const onMouseUp = () => {
-                  document.removeEventListener("mousemove", onMouseMove);
-                  document.removeEventListener("mouseup", onMouseUp);
-                };
-                document.addEventListener("mousemove", onMouseMove);
-                document.addEventListener("mouseup", onMouseUp);
-              }}
-            />
-            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              <ReviewPanel
-                state={review.state} result={review.result}
-                rawStream={review.rawStream} error={review.error}
-                onRun={()=>{ if(selectedFile&&fileContent) review.runReview(selectedFile.name,fileContent!); }}
-                onReset={review.reset}
-                onStop={review.stopReview}
-                filename={selectedFile?.name??null} hasFile={!!fileContent}
-              />
-            </div>
-          </div>
+          <AnimatePresence initial={false}>
+            {reviewOpen && (
+              <motion.div
+                key="review-panel"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: reviewWidth, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ type: "tween", duration: 0.26, ease: "easeOut" }}
+                style={{ flexShrink:0, borderLeft:"1px solid rgba(255,255,255,0.05)", background:"#060606", position:"relative", display:"flex", flexDirection:"column", overflow:"hidden" }}
+              >
+                {/* Drag Handle */}
+                <div
+                  style={{
+                    position: "absolute", left: -4, top: 0, bottom: 0, width: 8,
+                    cursor: "col-resize", zIndex: 10,
+                    background: "transparent",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(138,162,184,0.2)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const startW = reviewWidth;
+                    const onMouseMove = (moveE: MouseEvent) => {
+                      const delta = startX - moveE.clientX;
+                      setReviewWidth(Math.max(250, Math.min(1000, startW + delta)));
+                    };
+                    const onMouseUp = () => {
+                      document.removeEventListener("mousemove", onMouseMove);
+                      document.removeEventListener("mouseup", onMouseUp);
+                    };
+                    document.addEventListener("mousemove", onMouseMove);
+                    document.addEventListener("mouseup", onMouseUp);
+                  }}
+                />
+                {/* fixed inner width keeps content from squishing during the slide */}
+                <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", width: reviewWidth }}>
+                  <ReviewPanel
+                    state={review.state} result={review.result}
+                    rawStream={review.rawStream} error={review.error}
+                    blockedSecrets={review.blockedSecrets}
+                    onRun={()=>{ if(selectedFile&&fileContent) review.runReview(selectedFile.name,fileContent!,{ override: overridden }); }}
+                    onReset={review.reset}
+                    onStop={review.stopReview}
+                    filename={selectedFile?.name??null} hasFile={!!fileContent}
+                    onSendChat={sendChat}
+                    onOpenChat={()=>setChatOpen(true)}
+                    chatBusy={chat.streaming}
+                    chatCount={chat.messages.length}
+                    onIgnore={handleIgnore}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <button
+            onClick={()=>setReviewOpen(o=>!o)}
+            title={reviewOpen ? "Hide AI panel" : "Show AI Review & Chat"}
+            style={{
+              position:"absolute", top:10, zIndex:40,
+              right: reviewOpen ? reviewWidth + 12 : 12,
+              transition:"right .26s ease",
+              display:"flex", alignItems:"center", gap:7,
+              padding:"7px 13px", borderRadius:8,
+              background: reviewOpen ? "rgba(138,162,184,0.16)" : "rgba(138,162,184,0.1)",
+              border:"1px solid rgba(138,162,184,0.3)", color:"#8aa2b8",
+              fontSize:11, fontWeight:700, fontFamily:"var(--font-mono)", cursor:"pointer",
+              boxShadow:"0 4px 14px rgba(0,0,0,0.4)",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3l1.9 4.8L18.7 9l-4.8 1.9L12 15.7 10.1 10.9 5.3 9l4.8-1.2z"/>
+            </svg>
+            {reviewOpen ? "Hide AI" : "AI Review"}
+            {!reviewOpen && (review.state === "blocked" || review.state === "done" || chat.messages.length > 0) && (
+              <span style={{ width:7, height:7, borderRadius:"50%", background: review.state === "blocked" ? "#c4707e" : "#7a9c8e", boxShadow:`0 0 6px ${review.state === "blocked" ? "#c4707e" : "#7a9c8e"}` }} />
+            )}
+          </button>
 
         </div>
       </div>

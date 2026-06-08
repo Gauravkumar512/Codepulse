@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { signOut } from "next-auth/react";
 import NewScanPage from "./NewScanPage";
+import { IgnoredSecretsProvider } from "@/src/context/IgnoredSecretsContext";
 
 const Icons = {
   logout: (
@@ -143,7 +144,9 @@ export default function DashboardLayout() {
       <div style={{ height: "100vh", background: "#000", color: "#d4d4d4", overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <Topbar />
         <div style={{ flex: 1, overflow: "hidden" }}>
-          <NewScanPage />
+          <IgnoredSecretsProvider>
+            <NewScanPage />
+          </IgnoredSecretsProvider>
         </div>
       </div>
     </>
