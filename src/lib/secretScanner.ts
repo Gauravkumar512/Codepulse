@@ -1,12 +1,48 @@
+export type SecretSeverity = "critical" | "high" | "medium";
+
 export type SecretMatch = {
   line: number;
   column: number;
+  matchLength: number;
   pattern: string;
   match: string;
-  severity: "critical" | "high" | "medium";
+  severity: SecretSeverity;
   description: string;
   fix: string;
 };
+
+export const BLOCK_SEVERITIES: SecretSeverity[] = ["critical", "high"];
+
+export function isBlockingMatch(m: SecretMatch): boolean {
+  return BLOCK_SEVERITIES.includes(m.severity);
+}
+
+export function partitionMatches(matches: SecretMatch[]): {
+  blocking: SecretMatch[];
+  redactable: SecretMatch[];
+} {
+  const blocking: SecretMatch[] = [];
+  const redactable: SecretMatch[] = [];
+  for (const m of matches) {
+    (isBlockingMatch(m) ? blocking : redactable).push(m);
+  }
+  return { blocking, redactable };
+}
+
+export function maskSecretsInContent(content: string, matches: SecretMatch[]): string {
+  if (!matches.length) return content;
+  const lines = content.split("\n");
+  for (const m of matches) {
+    const idx = m.line - 1;
+    if (idx < 0 || idx >= lines.length) continue;
+    const line = lines[idx];
+    const start = m.column - 1;
+    if (start < 0 || start >= line.length) continue;
+    const end = Math.min(start + m.matchLength, line.length);
+    lines[idx] = line.slice(0, start) + "*".repeat(end - start) + line.slice(end);
+  }
+  return lines.join("\n");
+}
 
 export type FileScanResult = {
   path: string;
@@ -235,10 +271,185 @@ const SECRET_PATTERNS: {
   },
 ];
 
+/* Substrings that mark a match as a placeholder, not a real secret.
+   Shared between the regex pass and the entropy pass. */
+const PLACEHOLDER_TOKENS = [
+  "your_", "your-", "their_", "_here", "xxx", "placeholder",
+  "changeme", "replace", "example", "dummy", "<", ">", "...",
+  "user:password", "user:pass", "host:port",
+];
+
+function looksLikePlaceholder(value: string): boolean {
+  const lower = value.toLowerCase();
+  return PLACEHOLDER_TOKENS.some((p) => lower.includes(p));
+}
+
+const ENTROPY = {
+  minLen: 20,
+  maxLen: 200,
+  base64Threshold: 4.5, // bits/char — random base64 sits ~5.0–6.0
+  hexThreshold: 3.0,    // bits/char — random hex sits ~3.7–4.0
+};
+
+const CANDIDATE_RE = /[A-Za-z0-9+/_-]{16,}={0,2}/g;
+const HEX_ONLY_RE = /^[a-fA-F0-9]+$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const SAFE_TOKEN_PATTERNS: RegExp[] = [
+  // URLs:  http://… https://… www.…  (allowing a leading quote/paren/bracket)
+  /(?:^|["'`(\[])(?:https?:\/\/|www\.)/i,
+  // markdown link target:  [text](url)
+  /\]\([^)]*\)/,
+  // path-ish start:  /…  ./…  ../…  (allowing a leading quote/paren/bracket)
+  /(?:^|["'`(\[])(?:\.\.?\/|\/)/,
+  // Nix store paths — /nix/store/<hash>-name  (hash naturally looks high-entropy)
+  /\/nix\/store\//i,
+  // any hashed store/cache directory:  …/store/<32+ char hash>-…
+  /\/store\/[a-z0-9]{32,}-/i,
+  // contains a recognised file extension (followed by end / quote / ? # /)
+  /\.(?:json|jsonc|md|mdx|markdown|js|jsx|ts|tsx|mjs|cjs|nix|lock|txt|ya?ml|toml|cfg|conf|ini|css|scss|less|html?|svg|png|jpe?g|gif|webp|ico|woff2?|sh|bash|zsh|py|go|rs|java|rb|php|xml|csv|sql|graphql|prisma|vue|svelte|astro)(?:["'`)\]]|[?#/]|$)/i,
+];
+
+function isSafeToken(token: string): boolean {
+  return SAFE_TOKEN_PATTERNS.some((re) => re.test(token));
+}
+
+const KNOWN_ALPHABETS = [
+  "abcdefghijklmnopqrstuvwxyz",
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  "0123456789",
+  "0123456789abcdef",
+  "0123456789ABCDEF",
+  "0123456789abcdefghijklmnopqrstuvwxyz",
+  "abcdefghijklmnopqrstuvwxyz0123456789",
+  "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+];
+
+function isKnownAlphabet(candidate: string): boolean {
+  const cleaned = candidate.replace(/^[\s"'`]+/, "").replace(/[\s"'`]+$/, "");
+  return KNOWN_ALPHABETS.some((alphabet) => alphabet.includes(cleaned));
+}
+
+const DUMMY_VALUES = ["test", "dummy", "example", "explicit", "none", "null", "false", "true"];
+
+function isDummyValue(value: string): boolean {
+  const v = value.replace(/^[\s"'`]+/, "").replace(/[\s"'`]+$/, "");
+  if (v.length < 10) return true;
+  const lower = v.toLowerCase();
+  return DUMMY_VALUES.some((d) => lower.includes(d));
+}
+
+const SECRET_CONTEXT_KEYWORDS = [
+  "secret", "token", "apikey", "apisecret", "accesskey", "accesstoken",
+  "authtoken", "auth", "password", "passwd", "pwd", "privatekey", "private",
+  "credential", "clientsecret", "signingkey", "signing", "cipher", "salt",
+];
+
+function hasSecretContext(line: string): boolean {
+  const normalized = line.toLowerCase().replace(/[_-]/g, "");
+  return SECRET_CONTEXT_KEYWORDS.some((k) => normalized.includes(k));
+}
+
+function shannonEntropy(str: string): number {
+  if (!str.length) return 0;
+  const freq: Record<string, number> = {};
+  for (const ch of str) freq[ch] = (freq[ch] ?? 0) + 1;
+  let entropy = 0;
+  for (const ch in freq) {
+    const p = freq[ch] / str.length;
+    entropy -= p * Math.log2(p);
+  }
+  return entropy;
+}
+
+function isEnvFile(path: string): boolean {
+  const lower = path.toLowerCase();
+  return /(^|\/)\.env(\.[\w-]+)?$/.test(lower);
+}
+
+type Span = { line: number; start: number; end: number };
+
+function scanEntropy(path: string, lines: string[], regexSpans: Span[]): SecretMatch[] {
+  const found: SecretMatch[] = [];
+  const envFile = isEnvFile(path);
+
+  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    const line = lines[lineIdx];
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith("//") || trimmed.startsWith("#") || trimmed.startsWith("*")) continue;
+    if (/data:[^;]+;base64,|integrity\s*[:=]|sha(?:256|384|512)-/i.test(line)) continue;
+
+    const hasContext = envFile || hasSecretContext(line);
+
+    const TOKEN_RE = /\S+/g;
+    let t: RegExpExecArray | null;
+    while ((t = TOKEN_RE.exec(line)) !== null) {
+      const word = t[0];
+      const wordStart = t.index;
+      if (isSafeToken(word)) continue;
+
+      CANDIDATE_RE.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = CANDIDATE_RE.exec(word)) !== null) {
+        const candidate = m[0];
+        const col = wordStart + m.index + 1; // 1-based column within the line
+
+        if (candidate.length < ENTROPY.minLen || candidate.length > ENTROPY.maxLen) continue;
+        if (looksLikePlaceholder(candidate)) continue;
+        if (UUID_RE.test(candidate)) continue;
+        if (isKnownAlphabet(candidate)) continue; // sequential charset / dictionary string
+
+        const start = col;
+        const end = col + candidate.length;
+        const overlapsRegex = regexSpans.some(
+          (s) => s.line === lineIdx + 1 && start < s.end && end > s.start
+        );
+        if (overlapsRegex) continue;
+
+        const isHex = HEX_ONLY_RE.test(candidate);
+        const entropy = shannonEntropy(candidate);
+
+        if (isHex) {
+          if (!hasContext || entropy < ENTROPY.hexThreshold) continue;
+        } else {
+          if (entropy < ENTROPY.base64Threshold) continue;
+        }
+
+        const severity: SecretSeverity = hasContext ? "high" : "medium";
+
+        found.push({
+          line: lineIdx + 1,
+          column: col,
+          matchLength: candidate.length,
+          pattern: "High-Entropy String",
+          match: redactSecretValue(candidate.length > 60 ? `${candidate.slice(0, 57)}...` : candidate),
+          severity,
+          description: `High-entropy ${isHex ? "hex" : "base64"} string (${entropy.toFixed(
+            2
+          )} bits/char)${hasContext ? " assigned to a secret-like key" : ""} — likely a credential`,
+          fix: "If this is a secret, move it to an environment variable and rotate it",
+        });
+      }
+    }
+  }
+
+  return found;
+}
+
 
 export function scanFile(path: string, content: string): FileScanResult {
   const lines = content.split("\n");
   const matches: SecretMatch[] = [];
+
+  if (/\.mdx?$/i.test(path)) {
+    return { path, matches: [], scannedAt: Date.now() };
+  }
 
   const skipPaths = [
     ".env.example", ".env.sample", ".env.template",
@@ -256,31 +467,25 @@ export function scanFile(path: string, content: string): FileScanResult {
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const line = lines[lineIdx];
 
-      // Reset regex lastIndex
       pattern.regex.lastIndex = 0;
 
       let match: RegExpExecArray | null;
       while ((match = pattern.regex.exec(line)) !== null) {
         const matchValue = match[0];
 
-        // Skip if it looks like a placeholder
-        const placeholders = [
-          "your_", "your-", "their_", "_here", "xxx", "placeholder", 
-          "changeme", "replace", "example", "dummy", "<", ">", "...",
-          "user:password", "user:pass", "host:port"
-        ];
-        if (placeholders.some((p) => matchValue.toLowerCase().includes(p))) continue;
+        if (looksLikePlaceholder(matchValue)) continue;
 
-        // Extra check for keys (like RSA) truncated with ... on the same line
+        if (match[1] !== undefined && isDummyValue(match[1])) continue;
+
         if (matchValue.includes("BEGIN") && line.substring(match.index).includes("...")) continue;
 
-        // Skip comments (lines starting with // or #)
         const trimmed = line.trim();
         if (trimmed.startsWith("//") || trimmed.startsWith("#") || trimmed.startsWith("*")) continue;
 
         matches.push({
           line: lineIdx + 1,
           column: match.index + 1,
+          matchLength: matchValue.length,
           pattern: pattern.name,
           match: redactSecretValue(
             matchValue.length > 60 ? `${matchValue.slice(0, 57)}...` : matchValue
@@ -296,9 +501,16 @@ export function scanFile(path: string, content: string): FileScanResult {
     }
   }
 
+  const regexSpans: Span[] = matches.map((m) => ({
+    line: m.line,
+    start: m.column,
+    end: m.column + m.matchLength,
+  }));
+  matches.push(...scanEntropy(path, lines, regexSpans));
+
   const seen = new Set<string>();
   const deduped = matches.filter((m) => {
-    const key = `${m.line}:${m.pattern}`;
+    const key = `${m.line}:${m.column}:${m.pattern}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
